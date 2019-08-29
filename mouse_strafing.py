@@ -121,6 +121,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.isClicking = self.lmbDown or self.rmbDown or self.mmbDown
         if enteringStrafe:
             context.window.cursor_set("NONE")
+            context.area.tag_redraw()
         elif leavingStrafe:
             self.exitStrafe(context)
         return {"RUNNING_MODAL"}
@@ -196,6 +197,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     def exitStrafe(self, context: bpy.types.Context):
         self.centerMouse(context)
         context.window.cursor_set("DEFAULT")
+        context.area.tag_redraw()
 
     def exitOperator(self, context: bpy.types.Context):
         global running
@@ -239,17 +241,18 @@ def fpsMove(op: MouseStrafingOperator, rv3d: bpy.types.RegionView3D, stopSignal)
     if op.eDown: op.move3dView(rv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
     return 0.001
 
-def drawCallback(self, context: bpy.types.Context, event: bpy.types.Event):
-    if context.area != self.area:
+def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
+    if context.area != op.area:
         return
-    if self.prefs.showCrosshair:
+    if op.prefs.showCrosshair:
         x, y = context.region.width // 2 - 8, context.region.height // 2 - 7
         fontId = 0
         blf.size(fontId, 20, 72)
-        blf.color(fontId, 0, 0, 0, 0.5)
+        blf.color(fontId, 0, 0, 0, 0.8)
         blf.position(fontId, x, y, 0)
         blf.draw(fontId, "+")
-        blf.color(fontId, 1, 1, 1, 1)
+        brightness = 1.0 if op.isClicking else 0.8
+        blf.color(fontId, brightness, brightness, brightness, 1)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")
 
