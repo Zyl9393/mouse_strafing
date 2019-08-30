@@ -96,7 +96,9 @@ class MouseStrafingOperator(bpy.types.Operator):
             return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             mod = self.modScale()
-            self.move3dView(getSpaceView3D(context).region_3d, Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), Vector((0, 0, 0)))
+            self.move3dView(getSpaceView3D(context).region_3d, \
+                Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
+                Vector((0, 0, 0)))
             return {"RUNNING_MODAL"}
         elif event.type in [ "W", "A", "S", "D", "Q", "E" ]:
             if self.stopSignal is None:
@@ -150,7 +152,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         xDelta = event.mouse_x - event.mouse_prev_x
         yDelta = event.mouse_y - event.mouse_prev_y
         if action == "turnXY":
-            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, -yDelta if self.prefs.invertMouse else yDelta)), self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
+            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, -yDelta if self.prefs.invertMouse else yDelta)), \
+                self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         else:
             mod = self.modScale()
             xDeltaStrafe = mod * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
@@ -220,7 +223,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         sv3d = getSpaceView3D(context)
         rv3d = sv3d.region_3d
         viewPos, viewDir = getViewPos(rv3d)
-        hit = context.scene.ray_cast(context.window.view_layer, viewPos + viewDir * sv3d.clip_start, viewDir, distance = sv3d.clip_end - sv3d.clip_start)
+        hit = context.scene.ray_cast(context.window.view_layer, viewPos + viewDir * sv3d.clip_start, viewDir, \
+            distance = sv3d.clip_end - sv3d.clip_start)
         if hit[0]:
             newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
             rv3d.view_distance = (newPivotPos - viewPos).length
@@ -231,7 +235,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
     
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
-        context.window.cursor_warp(context.region.x + context.region.width // 2 - (event.mouse_x - event.mouse_prev_x)*0.5, context.region.y + context.region.height // 2 - (event.mouse_y - event.mouse_prev_y)*0.5)
+        context.window.cursor_warp(context.region.x + context.region.width // 2 - (event.mouse_x - event.mouse_prev_x)*0.5, \
+            context.region.y + context.region.height // 2 - (event.mouse_y - event.mouse_prev_y)*0.5)
 
 def fpsMove(op: MouseStrafingOperator, rv3d: bpy.types.RegionView3D, stopSignal):
     if not running or stopSignal[0]: return None
@@ -255,7 +260,8 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         blf.color(fontId, 0, 0, 0, 0.8)
         blf.position(fontId, x, y, 0)
         blf.draw(fontId, "+")
-        color = ((0.1, 1, 0.05, 1) if op.adjustPivotSuccess else (1, 0.1, 0.05, 1)) if op.cDown else (1, 1, 1, 1) if op.isClicking else (0.75, 0.75, 0.75, 1)
+        color = ((0.1, 1, 0.05, 1) if op.adjustPivotSuccess else (1, 0.1, 0.05, 1)) if op.cDown else \
+            (1, 1, 1, 1) if op.isClicking else (0.75, 0.75, 0.75, 1)
         blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")

@@ -3,21 +3,30 @@ import bpy
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
 
-    strafingDistance: bpy.props.FloatProperty(name = "Moderate Strafing Distance", description = "The distance to travel during an average mouse cursor movement of 1000 pixels over 20 frames. Drives the multiplier of the speed curve", default = 40, min = 0.1, max = 5000, soft_min = 1, soft_max = 1000, step = 10, precision = 2)
-    strafingPotential: bpy.props.FloatProperty(name = "Strafing Potential", description = "Increase this value to have to move the mouse less for large speeds, but more for slow speeds. Higher values are more difficult to control" , default = 1.2, min = 1.0, max = 2.0, soft_min = 1.0, soft_max = 1.6, step = 1, precision = 2)
+    strafingDistance: bpy.props.FloatProperty(name = "Moderate Strafing Distance", description = "The distance to travel during an average mouse cursor movement of 1000 pixels over 20 frames. Drives the multiplier of the speed curve", \
+        default = 40, min = 0.1, max = 5000, soft_min = 1, soft_max = 1000, step = 10, precision = 2)
+    strafingPotential: bpy.props.FloatProperty(name = "Strafing Potential", description = "Increase this value to have to move the mouse less for large speeds, but more for slow speeds. Higher values are more difficult to control", \
+        default = 1.2, min = 1.0, max = 2.0, soft_min = 1.0, soft_max = 1.6, step = 1, precision = 2)
     
-    wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed when using WASD keys to move", default = 8.0, min = 0.001, max = 20000, soft_min = 0.01, soft_max = 4000, step = 10, precision = 2)
-    wasdTime: bpy.props.FloatProperty(name = "WASD Acceleration Time", description = "Time until top speed is reached when using WASD keys to move", default = 0.2, min = 0.0, max = 4.0, soft_min = 0.0, soft_max = 1000, step = 1, precision = 2)
+    wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed when using WASD keys to move", \
+        default = 8.0, min = 0.001, max = 20000, soft_min = 0.01, soft_max = 4000, step = 10, precision = 2)
+    wasdTime: bpy.props.FloatProperty(name = "WASD Acceleration Time", description = "Time until top speed is reached when using WASD keys to move", \
+        default = 0.2, min = 0.0, max = 4.0, soft_min = 0.0, soft_max = 1000, step = 1, precision = 2)
 
-    sensitivityDefault: bpy.props.FloatProperty(name = "Sensitivity", description = "Default mouse sensitivity when panning the 3D View", default = 0.25, min = 0.01, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
-    sensitivityWasd: bpy.props.FloatProperty(name = "WASD Sensitivity", description = "Mouse sensitivity when panning in the 3D View while using WASD keys to move. Lower values feel better when using a high WASD Top Speed", default = 0.15, min = 0.01, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
-    sensitivityRappel: bpy.props.FloatProperty(name = "Rappel Sensitivity", description = "Mouse sensitivity when panning in the 3D View while using the rappel function, during which panning the desired amount is usually more difficult", default = 0.15, min = 0.0, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
+    sensitivityDefault: bpy.props.FloatProperty(name = "Sensitivity", description = "Default mouse sensitivity when panning the 3D View", \
+        default = 0.25, min = 0.01, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
+    sensitivityWasd: bpy.props.FloatProperty(name = "WASD Sensitivity", description = "Mouse sensitivity when panning in the 3D View while using WASD keys to move. Lower values feel better when using a high WASD Top Speed", \
+        default = 0.15, min = 0.01, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
+    sensitivityRappel: bpy.props.FloatProperty(name = "Rappel Sensitivity", description = "Mouse sensitivity when panning in the 3D View while using the rappel function, during which panning the desired amount is usually more difficult", \
+        default = 0.15, min = 0.0, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
 
     invertMouse: bpy.props.BoolProperty(name = "Invert Mouse", description = "Invert effect of vertical mouse movement when looking around", default = True)
     showCrosshair: bpy.props.BoolProperty(name = "Show Crosshair", description = "Show crosshair during strafe actions.", default = True)
-    wheelDistance: bpy.props.FloatProperty(name = "Wheel Distance", description = "Set how far to move when using the mouse wheel" , default = 0.5, min = -128.0, max = 128.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)
+    wheelDistance: bpy.props.FloatProperty(name = "Wheel Distance", description = "Set how far to move when using the mouse wheel", \
+        default = 0.5, min = -128.0, max = 128.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)
 
-    adjustPivot: bpy.props.BoolProperty(name = "Automatically Relocate Pivot", description = "Automatically relocate the 3D View's pivot point (instead of manually by pressing 'C') to the surface of whatever object you are looking at while using the operator", default = False)
+    adjustPivot: bpy.props.BoolProperty(name = "Automatically Relocate Pivot", description = "Automatically relocate the 3D View's "
+        "pivot point (instead of manually by pressing 'C') to the surface of whatever object you are looking at while using the operator", default = False)
     pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to you (the origin of the 3D View)" , \
         default = 5.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
 
