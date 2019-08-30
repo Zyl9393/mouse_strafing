@@ -146,9 +146,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         xDelta = event.mouse_x - event.mouse_prev_x
         yDelta = event.mouse_y - event.mouse_prev_y
         if action == "turnXY":
-            if self.isWasding:
-                xDelta, yDelta = xDelta*0.5, yDelta*0.5
-            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, -yDelta if self.prefs.invertMouse else yDelta)))
+            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, -yDelta if self.prefs.invertMouse else yDelta)), self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         else:
             mod = modScale(self)
             xDeltaStrafe = mod * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
@@ -161,15 +159,17 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.move3dView(getSpaceView3D(context).region_3d, Vector((xDeltaStrafe, 0, 0)), Vector((0, 0, yDeltaStrafe)))
             elif action == "turnXRappel":
                 self.move3dView(getSpaceView3D(context).region_3d, Vector((0, 0, 0)), Vector((0, 0, yDeltaStrafe)))
-                self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta*0.5, 0)))
+                self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, 0)), self.prefs.sensitivityRappel)
 
-    def pan3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector):
+    def pan3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, sensitivity):
+        if sensitivity == 0:
+            return
         viewPos, _viewDir = getViewPos(rv3d)
         rot = Quaternion(rv3d.view_rotation)
-        yawRot = Quaternion(Vector((0, 0, 1)), -delta[0]*0.0045)
+        yawRot = Quaternion(Vector((0, 0, 1)), -delta[0]*0.017453292*sensitivity)
         pitchAxis = Vector((1, 0, 0))
         pitchAxis.rotate(rot)
-        pitchRot = Quaternion(pitchAxis, delta[1]*0.0045)
+        pitchRot = Quaternion(pitchAxis, delta[1]*0.017453292*sensitivity)
         rot.rotate(pitchRot)
         rot.rotate(yawRot)
         rv3d.view_rotation = rot
