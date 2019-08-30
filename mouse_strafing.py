@@ -8,10 +8,6 @@ from mathutils import Quaternion
 
 from .prefs import MouseStrafingPreferences
 
-
-def modScale(op):
-    return 1 if op.inFast == op.inSlow else 5 if op.inFast else 0.2
-
 def getSpaceView3D(context: bpy.types.Context) -> bpy.types.SpaceView3D:
     area = context.area
     if area is not None and area.type == "VIEW_3D":
@@ -34,7 +30,7 @@ def signExp(base, exponent) -> float:
     s = math.pow(v, exponent)
     return s if base > 0 else -s
 
-def scaleDelta(delta, distance, sensitivity):
+def scaleDelta(delta, distance, sensitivity) -> float:
     unadjustedDistance = signExp(1000 * 0.1 / 20, sensitivity) * 20
     return signExp(delta * 0.1, sensitivity) * (distance / unadjustedDistance)
 
@@ -96,8 +92,8 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.performMouseAction(context, event, self.prefs.mmbAction)
             return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
-            scale = modScale(self)
-            self.move3dView(getSpaceView3D(context).region_3d, Vector((0, 0, -self.prefs.wheelDistance * scale if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * scale)), Vector((0, 0, 0)))
+            mod = self.modScale()
+            self.move3dView(getSpaceView3D(context).region_3d, Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), Vector((0, 0, 0)))
             return {"RUNNING_MODAL"}
         elif event.type in [ "W", "A", "S", "D", "Q", "E" ]:
             if self.stopSignal is None:
@@ -111,6 +107,9 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.adjustPivot(context)
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
+
+    def modScale(self):
+        return 1 if self.inFast == self.inSlow else 5 if self.inFast else 0.2
 
     def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
         self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
@@ -148,7 +147,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         if action == "turnXY":
             self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, -yDelta if self.prefs.invertMouse else yDelta)), self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         else:
-            mod = modScale(self)
+            mod = self.modScale()
             xDeltaStrafe = mod * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             yDeltaStrafe = mod * scaleDelta(yDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             if action == "strafeXZ":
@@ -180,9 +179,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         rv3d.view_location = rv3d.view_location + delta + globalDelta
 
     def wasdDelta(self):
-        mod = modScale(self)
         now = time.perf_counter()
-        delta = modScale(self) * self.wasdCurSpeed * (now - self.wasdPreviousTime)
+        delta = self.modScale() * self.wasdCurSpeed * (now - self.wasdPreviousTime)
         self.wasdPreviousTime = now
         return delta
     
