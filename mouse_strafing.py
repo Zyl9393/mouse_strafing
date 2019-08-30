@@ -151,11 +151,11 @@ class MouseStrafingOperator(bpy.types.Operator):
     def performMouseAction(self, context: bpy.types.Context, event: bpy.types.Event, action):
         xDelta = event.mouse_x - event.mouse_prev_x
         yDelta = event.mouse_y - event.mouse_prev_y
+        mod = self.modScale()
         if action == "turnXY":
-            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, -yDelta if self.prefs.invertMouse else yDelta)), \
+            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * mod, -yDelta * mod if self.prefs.invertMouse else yDelta * mod)), \
                 self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         else:
-            mod = self.modScale()
             xDeltaStrafe = mod * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             yDeltaStrafe = mod * scaleDelta(yDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             if action == "strafeXZ":
@@ -166,7 +166,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.move3dView(getSpaceView3D(context).region_3d, Vector((xDeltaStrafe, 0, 0)), Vector((0, 0, yDeltaStrafe)))
             elif action == "turnXRappel":
                 self.move3dView(getSpaceView3D(context).region_3d, Vector((0, 0, 0)), Vector((0, 0, yDeltaStrafe)))
-                self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta, 0)), self.prefs.sensitivityRappel)
+                self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * mod, 0)), self.prefs.sensitivityRappel)
 
     def pan3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, sensitivity):
         if sensitivity == 0:
