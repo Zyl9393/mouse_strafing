@@ -53,6 +53,9 @@ class MouseStrafingOperator(bpy.types.Operator):
     wasdPreviousTime = time.perf_counter()
     wasdCurSpeed = 0.0
     stopSignal = None
+
+    cDown = False
+    adjustPivotSuccess = False
     
     prefs: MouseStrafingPreferences = None
     area = None
@@ -103,8 +106,10 @@ class MouseStrafingOperator(bpy.types.Operator):
                 bpy.app.timers.register(lambda: fpsMove(self, pinnedRv3d, pinnedStopSignal))
             return self.updateKeys(context, event)
         elif event.type == "C":
+            self.cDown = event.value == "PRESS" if event.type == "C" else self.cDown
             if event.value == "PRESS":
                 self.adjustPivot(context)
+            context.area.tag_redraw()
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
 
@@ -220,6 +225,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
             rv3d.view_distance = (newPivotPos - viewPos).length
             setViewPos(rv3d, viewPos)
+        self.adjustPivotSuccess = hit[0]
     
     def centerMouse(self, context: bpy.types.Context):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
@@ -249,8 +255,8 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         blf.color(fontId, 0, 0, 0, 0.8)
         blf.position(fontId, x, y, 0)
         blf.draw(fontId, "+")
-        brightness = 1.0 if op.isClicking else 0.8
-        blf.color(fontId, brightness, brightness, brightness, 1)
+        color = ((0.1, 1, 0.05, 1) if op.adjustPivotSuccess else (1, 0.1, 0.05, 1)) if op.cDown else (1, 1, 1, 1) if op.isClicking else (0.75, 0.75, 0.75, 1)
+        blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")
 
