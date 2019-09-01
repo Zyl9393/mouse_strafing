@@ -17,7 +17,7 @@ Addon preferences:
 
 ## For everyone else
 1. In Blender, unbind animation playback from the spacebar.
-2. Download `mouse_strafing.zip` and install it from the Blender Addons preferences page.
+2. Download [mouse_strafing.zip](https://github.com/Zyl9393/mouse_strafing/raw/master/mouse_strafing.zip) and install it from the Blender Addons preferences page.
 
 ## But I don't want to change what I have on the spacebar
 Not a problem. You can change the binding in the preferences if you feel you have found a more suitable configuration for your workflow.
