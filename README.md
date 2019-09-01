@@ -1,9 +1,8 @@
 # Mouse Strafing
-Strafe in Blender's 3D View using the mouse, while holding down a key.
+Strafe in Blender's 3D View using the mouse, while holding down a key. Useful for navigating large scenes faster.
 
 ## What does it look like?
-
-See [preview.webm](preview.webm).
+See [preview.webm](https://raw.githubusercontent.com/Zyl9393/mouse_strafing/master/preview.webm).
 
 Addon preferences:
 
@@ -20,12 +19,12 @@ Addon preferences:
 1. In Blender, unbind animation playback from the spacebar.
 2. Download `mouse_strafing.zip` and install it from the Blender Addons preferences page.
 
-## But I don't want to change what I have on the Spacebar
+## But I don't want to change what I have on the spacebar
 Not a problem. You can change the binding in the preferences if you feel you have found a more suitable configuration for your workflow.
 
 # Usage
 ## Strafing
-Click some where in the 3D View, then press and hold the spacebar. A cross will appear in the center of the screen. Click and hold the left, right or middle mouse button to enable mouse strafing. Additionally, hold the left and right mouse button together for a 4th movement option. Then use the mouse to strafe or turn. Which buttons do what can be configured in the addon preferences.
+Click somewhere in the 3D View, then press and hold the spacebar. A cross will appear in the center of the screen. Click and hold the left, right or middle mouse button to enable mouse strafing. Additionally, hold the left and right mouse button together for a 4th movement option. Then use the mouse to strafe or turn. Which buttons do what can be configured in the addon preferences.
 
 ## Relocate Pivot
 While holding the spacebar, press C to relocate the 3D View's pivot point to the surface which you are looking at.
