@@ -95,7 +95,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.performMouseAction(context, event, self.prefs.mmbAction)
             return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
-            mod = self.modScale()
+            mod = self.modScale(True)
             self.move3dView(getSpaceView3D(context).region_3d, \
                 Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                 Vector((0, 0, 0)))
@@ -115,8 +115,8 @@ class MouseStrafingOperator(bpy.types.Operator):
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
 
-    def modScale(self):
-        return 1 if self.inFast == self.inSlow else 5 if self.inFast else 0.2
+    def modScale(self, allowFast):
+        return 1 if self.inFast == self.inSlow else (5 if allowFast else 1) if self.inFast else 0.2
 
     def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
         self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
@@ -151,13 +151,14 @@ class MouseStrafingOperator(bpy.types.Operator):
     def performMouseAction(self, context: bpy.types.Context, event: bpy.types.Event, action):
         xDelta = event.mouse_x - event.mouse_prev_x
         yDelta = event.mouse_y - event.mouse_prev_y
-        mod = self.modScale()
+        modStrafe = self.modScale(True)
+        modTurn = self.modScale(False)
         if action == "turnXY":
-            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * mod, -yDelta * mod if self.prefs.invertMouse else yDelta * mod)), \
+            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
                 self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         else:
-            xDeltaStrafe = mod * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
-            yDeltaStrafe = mod * scaleDelta(yDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
+            xDeltaStrafe = modStrafe * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
+            yDeltaStrafe = modStrafe * scaleDelta(yDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             if action == "strafeXZ":
                 self.move3dView(getSpaceView3D(context).region_3d, Vector((xDeltaStrafe, 0, -yDeltaStrafe)), Vector((0, 0, 0)))
             elif action == "strafeXY":
@@ -166,7 +167,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.move3dView(getSpaceView3D(context).region_3d, Vector((xDeltaStrafe, 0, 0)), Vector((0, 0, yDeltaStrafe)))
             elif action == "turnXRappel":
                 self.move3dView(getSpaceView3D(context).region_3d, Vector((0, 0, 0)), Vector((0, 0, yDeltaStrafe)))
-                self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * mod, 0)), self.prefs.sensitivityRappel)
+                self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * modTurn, 0)), self.prefs.sensitivityRappel)
 
     def pan3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, sensitivity):
         if sensitivity == 0:
@@ -188,7 +189,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def wasdDelta(self):
         now = time.perf_counter()
-        delta = self.modScale() * self.wasdCurSpeed * (now - self.wasdPreviousTime)
+        delta = self.modScale(True) * self.wasdCurSpeed * (now - self.wasdPreviousTime)
         self.wasdPreviousTime = now
         return delta
     
