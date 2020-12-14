@@ -240,14 +240,29 @@ class MouseStrafingOperator(bpy.types.Operator):
         sv3d = getSpaceView3D(context)
         rv3d = sv3d.region_3d
         viewPos, viewDir = getViewPos(rv3d)
-        hit = context.scene.ray_cast(context.window.view_layer, viewPos + viewDir * sv3d.clip_start, viewDir, \
-            distance = sv3d.clip_end - sv3d.clip_start)
-        if hit[0]:
+        castStart = viewPos + viewDir * sv3d.clip_start
+        self.adjustPivotSuccess = False
+        attemptCount = 0
+        while attemptCount < 100:
+            attemptCount = attemptCount + 1
+            hit = context.scene.ray_cast(context.window.view_layer, castStart, viewDir, \
+                distance = sv3d.clip_end - sv3d.clip_start)
+            if not hit[0]:
+                break
+            isLookingAtBackface = Vector(hit[2]).dot(viewDir) > 0
+            if isLookingAtBackface and sv3d.shading.show_backface_culling:
+                nudge = castStart.length * 0.00001
+                if nudge < 0.00001:
+                    nudge = 0.00001
+                castStart = hit[1] + viewDir * nudge
+                continue
             newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
             rv3d.view_distance = (newPivotPos - viewPos).length
+            self.adjustPivotSuccess = hit
             setViewPos(rv3d, viewPos)
-        self.adjustPivotSuccess = hit[0]
-    
+            self.adjustPivotSuccess = True
+            break;
+
     def centerMouse(self, context: bpy.types.Context):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
     
