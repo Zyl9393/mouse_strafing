@@ -58,6 +58,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_label = "Mouse Strafing"
     bl_options = { "REGISTER", "BLOCKING" }
 
+    wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
     inFast, inSlow = False, False
 
     lmbDown, rmbDown, mmbDown = False, False, False
@@ -116,7 +117,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                 Vector((0, 0, 0)))
             return {"RUNNING_MODAL"}
-        elif event.type in [ "W", "A", "S", "D", "Q", "E" ]:
+        elif event.type in self.wasdKeys:
             if self.stopSignal is None:
                 self.stopSignal = [False]
                 pinnedStopSignal = self.stopSignal
