@@ -64,6 +64,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     lmbDown, rmbDown, mmbDown = False, False, False
     isClicking = False
+    modeKeyReleased = False
 
     wDown, aDown, sDown, dDown, qDown, eDown = False, False, False, False, False, False
     isWasding = False
@@ -96,8 +97,12 @@ class MouseStrafingOperator(bpy.types.Operator):
         if not running:
             return {"CANCELLED"}
         self.inFast, self.inSlow = event.shift, event.ctrl or event.alt
-        if event.type == kmi.type and event.value == "RELEASE":
-            return self.exitOperator(context)
+        if event.type == kmi.type:
+            if event.value == "PRESS":
+                self.modeKeyReleased = False
+            elif event.value == "RELEASE":
+                self.modeKeyReleased = True
+            return self.considerExitOperator(context)
         elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
             return self.updateMode(context, event)
         elif event.type == "MOUSEMOVE":
@@ -152,7 +157,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             context.window.cursor_set("NONE")
             context.area.tag_redraw()
         elif leavingStrafe:
-            self.exitStrafe(context)
+            return self.exitStrafe(context)
         return {"RUNNING_MODAL"}
 
     def updateKeys(self, context: bpy.types.Context, event: bpy.types.Event):
@@ -240,12 +245,16 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.centerMouse(context)
         context.window.cursor_set("DEFAULT")
         context.area.tag_redraw()
+        return self.considerExitOperator(context)
+
+    def considerExitOperator(self, context: bpy.types.Context):
+        if self.modeKeyReleased and not self.isClicking:
+            return self.exitOperator(context)
+        return {"RUNNING_MODAL"}
 
     def exitOperator(self, context: bpy.types.Context):
         global running
         running = False
-        if self.isClicking:
-            self.exitStrafe(context)
         if self.stopSignal is not None:
             self.stopSignal[0] = True
             self.stopSignal = None
