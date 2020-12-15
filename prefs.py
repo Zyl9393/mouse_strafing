@@ -43,19 +43,20 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     adjustPivot: bpy.props.BoolProperty(name = "Automatically Relocate Pivot", description = "Automatically relocate the 3D View's "
         "pivot point (instead of manually by pressing 'C') to the surface of whatever object you are looking at while using the operator", default = False)
-    pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to you (the origin of the 3D View)" , \
-        default = 5.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
+    pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to the 3D View camera" , \
+        default = 0.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
 
     actionItems = [ \
         ("turnXY", "Look around", "Look around", "NONE", 0), \
         ("strafeXZ", "Strafe left/right/forward/backwards", "Strafe left/right/forward/backwards", "NONE", 1), \
         ("strafeXY", "Strafe left/right/up/down", "Strafe left/right/up/down", "NONE", 2), \
         ("strafeXRappel", "Strafe left/right and rappel", "Strafe left/right and rappel (move up/down world Z-axis)", "NONE", 3), \
-        ("turnXRappel", "Turn left/right and rappel", "Turn left/right and rappel (move up/down world Z-axis)", "NONE", 4)]
+        ("turnXRappel", "Turn left/right and rappel", "Turn left/right and rappel (move up/down world Z-axis)", "NONE", 4), \
+        ("roll", "Roll the camera", "Roll the camera (press R to reset roll)", "NONE", 5)]
     lmbAction: bpy.props.EnumProperty(name = "LMB", description = "Set navigation method to use while only Left Mouse Button (LMB) is held down", items = actionItems, default = "turnXY")
     rmbAction: bpy.props.EnumProperty(name = "RMB", description = "Set navigation method to use while only Right Mouse Button (RMB) is held down", items = actionItems, default = "strafeXY")
     bmbAction: bpy.props.EnumProperty(name = "BMB", description = "Set navigation method to use while Both (left and right) Mouse Buttons (BMB) are held down", items = actionItems, default = "strafeXZ")
-    mmbAction: bpy.props.EnumProperty(name = "MMB", description = "Set navigation method to use while only Middle Mouse Button (MMB) is held down", items = actionItems, default = "strafeXRappel")
+    mmbAction: bpy.props.EnumProperty(name = "MMB", description = "Set navigation method to use while only Middle Mouse Button (MMB) is held down", items = actionItems, default = "roll")
 
     def draw(self, context: bpy.types.Context):
         prefs: MouseStrafingPreferences = context.preferences.addons["mouse_strafing"].preferences

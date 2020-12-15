@@ -21,6 +21,7 @@ import bpy
 import blf
 from mathutils import Vector
 from mathutils import Quaternion
+import mathutils
 
 from .prefs import MouseStrafingPreferences
 
@@ -130,6 +131,11 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.adjustPivot(context)
             context.area.tag_redraw()
             return {"RUNNING_MODAL"}
+        elif event.type == "R":
+            if event.value == "PRESS":
+                self.resetRoll(context)
+            context.area.tag_redraw()
+            return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
 
     def modScale(self, allowFast):
@@ -173,6 +179,9 @@ class MouseStrafingOperator(bpy.types.Operator):
         if action == "turnXY":
             self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
                 self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
+        elif action == "roll":
+            self.roll3dView(getSpaceView3D(context).region_3d, Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
+                self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         else:
             xDeltaStrafe = modStrafe * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             yDeltaStrafe = modStrafe * scaleDelta(yDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
@@ -197,8 +206,17 @@ class MouseStrafingOperator(bpy.types.Operator):
         pitchRot = Quaternion(pitchAxis, delta[1]*0.017453292*sensitivity)
         rot.rotate(pitchRot)
         rot.rotate(yawRot)
-        rv3d.view_rotation = rot
+        rv3d.view_rotation = rot.normalized()
         setViewPos(rv3d, viewPos)
+
+    def roll3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, sensitivity):
+        if sensitivity == 0:
+            return
+        viewPos, viewDir = getViewPos(rv3d)
+        rot = Quaternion(rv3d.view_rotation)
+        roll = Quaternion(viewDir, delta[0]*0.017453292*sensitivity)
+        rot.rotate(roll)
+        rv3d.view_rotation = rot.normalized()
 
     def move3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, globalDelta: Vector):
         delta.rotate(Quaternion(rv3d.view_rotation))
@@ -252,17 +270,32 @@ class MouseStrafingOperator(bpy.types.Operator):
                 break
             isLookingAtBackface = Vector(hit[2]).dot(viewDir) > 0
             if isLookingAtBackface and sv3d.shading.show_backface_culling:
-                nudge = castStart.length * 0.00001
+                nudge = castStart.length * 0.000001
                 if nudge < 0.00001:
                     nudge = 0.00001
+                elif nudge > 0.004:
+                    nudge = 0.004
                 castStart = hit[1] + viewDir * nudge
                 continue
             newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
             rv3d.view_distance = (newPivotPos - viewPos).length
-            self.adjustPivotSuccess = hit
             setViewPos(rv3d, viewPos)
             self.adjustPivotSuccess = True
-            break;
+            break
+
+    def resetRoll(self, context: bpy.types.Context):
+        sv3d = getSpaceView3D(context)
+        rv3d = sv3d.region_3d
+        viewPos, viewDir = getViewPos(rv3d)
+        rot = Quaternion(rv3d.view_rotation)
+        up = Vector((0, 1, 0))
+        up.rotate(rot)
+        py = getPitchYaw(viewDir, up)
+        print(py)
+        newRot = Quaternion(Vector((1, 0, 0)), py[0])
+        newRot.rotate(Quaternion(Vector((0, 0, 1)), py[1]))
+        rv3d.view_rotation = newRot.normalized()
+        setViewPos(rv3d, viewPos)
 
     def centerMouse(self, context: bpy.types.Context):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
@@ -270,6 +303,23 @@ class MouseStrafingOperator(bpy.types.Operator):
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
         context.window.cursor_warp(context.region.x + context.region.width // 2 - (event.mouse_x - event.mouse_prev_x)*0.5, \
             context.region.y + context.region.height // 2 - (event.mouse_y - event.mouse_prev_y)*0.5)
+
+def getPitchYaw(dir: Vector, up: Vector):
+    pitch = 0.0 if dir[2] <= -1 else (math.pi if dir[2] >= 1 else math.acos(-dir[2]))
+    yaw = 0.0
+    flatDir = dir
+    if not (flatDir[2] > -0.999999 and flatDir[2] < 0.999999):
+        flatDir = up
+    elif not (flatDir[2] > -0.999 and flatDir[2] < 0.999):
+        flatDir = flatDir * 1024 # normalizing a vector involves squaring its elements. making it longer here eliminates the chance of a division by zero.
+    mirrorYaw = flatDir[1] < 0
+    flatDir[2] = 0
+    flatDir.normalize()
+    x = flatDir[0]
+    yaw = 0.5 * math.pi if x <= -1 else (-0.5 * math.pi if x >= 1 else -math.asin(x))
+    if mirrorYaw:
+        yaw = math.pi - yaw
+    return Vector((pitch, yaw))
 
 def fpsMove(op: MouseStrafingOperator, rv3d: bpy.types.RegionView3D, stopSignal):
     if not running or stopSignal[0]: return None
