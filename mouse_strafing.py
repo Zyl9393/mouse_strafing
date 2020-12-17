@@ -119,7 +119,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             mod = self.modScale(True)
-            self.move3dView(getSpaceView3D(context).region_3d, \
+            self.move3dView(getSpaceView3D(context), \
                 Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                 Vector((0, 0, 0)))
             return {"RUNNING_MODAL"}
@@ -127,8 +127,8 @@ class MouseStrafingOperator(bpy.types.Operator):
             if self.stopSignal is None:
                 self.stopSignal = [False]
                 pinnedStopSignal = self.stopSignal
-                pinnedRv3d = getSpaceView3D(context).region_3d
-                bpy.app.timers.register(lambda: fpsMove(self, pinnedRv3d, pinnedStopSignal))
+                pinnedSv3d = getSpaceView3D(context)
+                bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedStopSignal))
             return self.updateKeys(context, event)
         elif event.type == "C":
             self.cDown = event.value == "PRESS" if event.type == "C" else self.cDown
@@ -182,27 +182,27 @@ class MouseStrafingOperator(bpy.types.Operator):
         modStrafe = self.modScale(True)
         modTurn = self.modScale(False)
         if action == "turnXY":
-            self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
+            self.pan3dView(getSpaceView3D(context), Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
                 self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         elif action == "roll":
-            self.roll3dView(getSpaceView3D(context).region_3d, Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
+            self.roll3dView(getSpaceView3D(context), Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
                 self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
         else:
             xDeltaStrafe = modStrafe * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             yDeltaStrafe = modStrafe * scaleDelta(yDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
             if action == "strafeXZ":
-                self.move3dView(getSpaceView3D(context).region_3d, Vector((xDeltaStrafe, 0, -yDeltaStrafe)), Vector((0, 0, 0)))
+                self.move3dView(getSpaceView3D(context), Vector((xDeltaStrafe, 0, -yDeltaStrafe)), Vector((0, 0, 0)))
             elif action == "strafeXY":
-                self.move3dView(getSpaceView3D(context).region_3d, Vector((xDeltaStrafe, yDeltaStrafe, 0)), Vector((0, 0, 0)))
+                self.move3dView(getSpaceView3D(context), Vector((xDeltaStrafe, yDeltaStrafe, 0)), Vector((0, 0, 0)))
             elif action == "strafeXRappel":
-                self.move3dView(getSpaceView3D(context).region_3d, Vector((xDeltaStrafe, 0, 0)), Vector((0, 0, yDeltaStrafe)))
+                self.move3dView(getSpaceView3D(context), Vector((xDeltaStrafe, 0, 0)), Vector((0, 0, yDeltaStrafe)))
             elif action == "turnXRappel":
-                self.move3dView(getSpaceView3D(context).region_3d, Vector((0, 0, 0)), Vector((0, 0, yDeltaStrafe)))
-                self.pan3dView(getSpaceView3D(context).region_3d, Vector((xDelta * modTurn, 0)), self.prefs.sensitivityRappel)
+                self.move3dView(getSpaceView3D(context), Vector((0, 0, 0)), Vector((0, 0, yDeltaStrafe)))
+                self.pan3dView(getSpaceView3D(context), Vector((xDelta * modTurn, 0)), self.prefs.sensitivityRappel)
 
-    def pan3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, sensitivity):
-        if sensitivity == 0:
-            return
+    def pan3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, sensitivity):
+        considerViewToCamera(sv3d)
+        rv3d = sv3d.region_3d
         viewPos, _viewDir = getViewPos(rv3d)
         rot = Quaternion(rv3d.view_rotation)
         yawRot = Quaternion(Vector((0, 0, 1)), -delta[0]*0.017453292*sensitivity)
@@ -214,16 +214,18 @@ class MouseStrafingOperator(bpy.types.Operator):
         rv3d.view_rotation = rot.normalized()
         setViewPos(rv3d, viewPos)
 
-    def roll3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, sensitivity):
-        if sensitivity == 0:
-            return
+    def roll3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, sensitivity):
+        considerViewToCamera(sv3d)
+        rv3d = sv3d.region_3d
         viewPos, viewDir = getViewPos(rv3d)
         rot = Quaternion(rv3d.view_rotation)
         roll = Quaternion(viewDir, delta[0]*0.017453292*sensitivity)
         rot.rotate(roll)
         rv3d.view_rotation = rot.normalized()
 
-    def move3dView(self, rv3d: bpy.types.RegionView3D, delta: Vector, globalDelta: Vector):
+    def move3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, globalDelta: Vector):
+        considerViewToCamera(sv3d)
+        rv3d = sv3d.region_3d
         delta.rotate(Quaternion(rv3d.view_rotation))
         rv3d.view_location = rv3d.view_location + delta + globalDelta
 
@@ -308,10 +310,21 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def centerMouse(self, context: bpy.types.Context):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
-    
+
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
         context.window.cursor_warp(context.region.x + context.region.width // 2 - (event.mouse_x - event.mouse_prev_x)*0.5, \
             context.region.y + context.region.height // 2 - (event.mouse_y - event.mouse_prev_y)*0.5)
+
+def considerViewToCamera(sv3d: bpy.types.SpaceView3D):
+    rv3d = sv3d.region_3d
+    if rv3d.view_perspective == "CAMERA" and not sv3d.lock_camera:
+        viewToCamera(sv3d)
+        rv3d.view_perspective = "PERSP" # todo: what should happen if camera is ortho?
+
+def viewToCamera(sv3d: bpy.types.SpaceView3D):
+    camera = sv3d.camera
+    # camera.rotation_quaternion = sv3d.region_3d.view_rotation
+    setViewPos(sv3d.region_3d, camera.location)
 
 def getPitchYaw(dir: Vector, up: Vector):
     pitch = 0.0 if dir[2] <= -1 else (math.pi if dir[2] >= 1 else math.acos(-dir[2]))
@@ -330,25 +343,25 @@ def getPitchYaw(dir: Vector, up: Vector):
         yaw = math.pi - yaw
     return Vector((pitch, yaw))
 
-def fpsMove(op: MouseStrafingOperator, rv3d: bpy.types.RegionView3D, stopSignal):
+def fpsMove(op: MouseStrafingOperator, sv3d: bpy.types.SpaceView3D, stopSignal):
     if not running or stopSignal[0]: return None
     if op.isWasding: op.wasdAccelerate()
     delta = op.wasdDelta()
-    if op.wDown: op.move3dView(rv3d, Vector((0, 0, -delta)), Vector((0, 0, 0)))
-    if op.aDown: op.move3dView(rv3d, Vector((-delta, 0, 0)), Vector((0, 0, 0)))
-    if op.sDown: op.move3dView(rv3d, Vector((0, 0, delta)), Vector((0, 0, 0)))
-    if op.dDown: op.move3dView(rv3d, Vector((delta, 0, 0)), Vector((0, 0, 0)))
-    if op.qDown: op.move3dView(rv3d, Vector((0, -delta, 0)), Vector((0, 0, 0)))
-    if op.eDown: op.move3dView(rv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
+    if op.wDown: op.move3dView(sv3d, Vector((0, 0, -delta)), Vector((0, 0, 0)))
+    if op.aDown: op.move3dView(sv3d, Vector((-delta, 0, 0)), Vector((0, 0, 0)))
+    if op.sDown: op.move3dView(sv3d, Vector((0, 0, delta)), Vector((0, 0, 0)))
+    if op.dDown: op.move3dView(sv3d, Vector((delta, 0, 0)), Vector((0, 0, 0)))
+    if op.qDown: op.move3dView(sv3d, Vector((0, -delta, 0)), Vector((0, 0, 0)))
+    if op.eDown: op.move3dView(sv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
     return 0.001
 
 def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
     if context.area != op.area:
         return
+    fontId = 0
+    blf.size(fontId, 20, 72)
     if op.prefs.showCrosshair:
         x, y = context.region.width // 2 - 8, context.region.height // 2 - 7
-        fontId = 0
-        blf.size(fontId, 20, 72)
         blf.color(fontId, 0, 0, 0, 0.8)
         blf.position(fontId, x, y, 0)
         blf.draw(fontId, "+")
@@ -357,6 +370,9 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")
+    # blf.color(fontId, 240, 240, 240, 0.998)
+    # blf.position(fontId, 100, 100, 0)
+    # blf.draw(fontId, "Cam = " + getSpaceView3D(context).region_3d.view.__str__() + "\n" + "Lock = " + ("On" if getSpaceView3D(context).lock_camera else "Off"))
 
 km = None
 kmi = None
