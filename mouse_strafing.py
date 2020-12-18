@@ -201,33 +201,63 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.pan3dView(getSpaceView3D(context), Vector((xDelta * modTurn, 0)), self.prefs.sensitivityRappel)
 
     def pan3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, sensitivity):
-        considerViewToCamera(sv3d)
-        rv3d = sv3d.region_3d
-        viewPos, _viewDir = getViewPos(rv3d)
-        rot = Quaternion(rv3d.view_rotation)
+        viewPos, rot, _viewDir = prepareCameraTransformation(sv3d)
         yawRot = Quaternion(Vector((0, 0, 1)), -delta[0]*0.017453292*sensitivity)
         pitchAxis = Vector((1, 0, 0))
         pitchAxis.rotate(rot)
         pitchRot = Quaternion(pitchAxis, delta[1]*0.017453292*sensitivity)
         rot.rotate(pitchRot)
         rot.rotate(yawRot)
-        rv3d.view_rotation = rot.normalized()
-        setViewPos(rv3d, viewPos)
+        applyCameraTranformation(sv3d, viewPos, rot)
 
     def roll3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, sensitivity):
-        considerViewToCamera(sv3d)
-        rv3d = sv3d.region_3d
-        viewPos, viewDir = getViewPos(rv3d)
-        rot = Quaternion(rv3d.view_rotation)
+        viewPos, rot, viewDir = prepareCameraTransformation(sv3d)
         roll = Quaternion(viewDir, delta[0]*0.017453292*sensitivity)
         rot.rotate(roll)
-        rv3d.view_rotation = rot.normalized()
+        applyCameraTranformation(sv3d, viewPos, rot)
 
     def move3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, globalDelta: Vector):
-        considerViewToCamera(sv3d)
-        rv3d = sv3d.region_3d
-        delta.rotate(Quaternion(rv3d.view_rotation))
-        rv3d.view_location = rv3d.view_location + delta + globalDelta
+        viewPos, rot, _viewDir = prepareCameraTransformation(sv3d)
+        delta.rotate(Quaternion(rot))
+        viewPos = viewPos + delta + globalDelta
+        applyCameraTranformation(sv3d, viewPos, rot)
+
+    def adjustPivot(self, context: bpy.types.Context):
+        sv3d = getSpaceView3D(context)
+        viewPos, rot, viewDir = prepareCameraTransformation(sv3d)
+        castStart = viewPos + viewDir * sv3d.clip_start
+        self.adjustPivotSuccess = False
+        attemptCount = 0
+        while attemptCount < 100:
+            attemptCount = attemptCount + 1
+            hit = context.scene.ray_cast(context.window.view_layer, castStart, viewDir, \
+                distance = sv3d.clip_end - sv3d.clip_start)
+            if not hit[0]:
+                break
+            isLookingAtBackface = Vector(hit[2]).dot(viewDir) > 0
+            if isLookingAtBackface and sv3d.shading.show_backface_culling:
+                nudge = castStart.length * 0.000001
+                if nudge < 0.00001:
+                    nudge = 0.00001
+                elif nudge > 0.004:
+                    nudge = 0.004
+                castStart = hit[1] + viewDir * nudge
+                continue
+            newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
+            sv3d.region_3d.view_distance = (newPivotPos - viewPos).length
+            applyCameraTranformation(sv3d, viewPos, rot, True)
+            self.adjustPivotSuccess = True
+            break
+
+    def resetRoll(self, context: bpy.types.Context):
+        sv3d = getSpaceView3D(context)
+        viewPos, rot, viewDir = prepareCameraTransformation(sv3d)
+        up = Vector((0, 1, 0))
+        up.rotate(rot)
+        py = getPitchYaw(viewDir, up)
+        newRot = Quaternion(Vector((1, 0, 0)), py[0])
+        newRot.rotate(Quaternion(Vector((0, 0, 1)), py[1]))
+        applyCameraTranformation(sv3d, viewPos, newRot)
 
     def wasdDelta(self):
         now = time.perf_counter()
@@ -266,48 +296,6 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.area.tag_redraw()
         return {"CANCELLED"}
 
-    def adjustPivot(self, context: bpy.types.Context):
-        sv3d = getSpaceView3D(context)
-        rv3d = sv3d.region_3d
-        viewPos, viewDir = getViewPos(rv3d)
-        castStart = viewPos + viewDir * sv3d.clip_start
-        self.adjustPivotSuccess = False
-        attemptCount = 0
-        while attemptCount < 100:
-            attemptCount = attemptCount + 1
-            hit = context.scene.ray_cast(context.window.view_layer, castStart, viewDir, \
-                distance = sv3d.clip_end - sv3d.clip_start)
-            if not hit[0]:
-                break
-            isLookingAtBackface = Vector(hit[2]).dot(viewDir) > 0
-            if isLookingAtBackface and sv3d.shading.show_backface_culling:
-                nudge = castStart.length * 0.000001
-                if nudge < 0.00001:
-                    nudge = 0.00001
-                elif nudge > 0.004:
-                    nudge = 0.004
-                castStart = hit[1] + viewDir * nudge
-                continue
-            newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
-            rv3d.view_distance = (newPivotPos - viewPos).length
-            setViewPos(rv3d, viewPos)
-            self.adjustPivotSuccess = True
-            break
-
-    def resetRoll(self, context: bpy.types.Context):
-        sv3d = getSpaceView3D(context)
-        rv3d = sv3d.region_3d
-        viewPos, viewDir = getViewPos(rv3d)
-        rot = Quaternion(rv3d.view_rotation)
-        up = Vector((0, 1, 0))
-        up.rotate(rot)
-        py = getPitchYaw(viewDir, up)
-        print(py)
-        newRot = Quaternion(Vector((1, 0, 0)), py[0])
-        newRot.rotate(Quaternion(Vector((0, 0, 1)), py[1]))
-        rv3d.view_rotation = newRot.normalized()
-        setViewPos(rv3d, viewPos)
-
     def centerMouse(self, context: bpy.types.Context):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
 
@@ -315,16 +303,63 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.window.cursor_warp(context.region.x + context.region.width // 2 - (event.mouse_x - event.mouse_prev_x)*0.5, \
             context.region.y + context.region.height // 2 - (event.mouse_y - event.mouse_prev_y)*0.5)
 
+def prepareCameraTransformation(sv3d: bpy.types.SpaceView3D) -> (Vector, Quaternion, Vector):
+    considerViewToCamera(sv3d)
+    rv3d = sv3d.region_3d
+    viewPos, _viewDir = getViewPos(rv3d)
+    viewRot = Quaternion(rv3d.view_rotation)
+    if rv3d.view_perspective == "CAMERA" and sv3d.lock_camera and sv3d.camera is not None:
+        viewPos = sv3d.camera.location
+        viewRot = getObjectRotationQuaternion(sv3d.camera)
+    viewDir = Vector((0, 0, -1))
+    viewDir.rotate(viewRot)
+    return viewPos, viewRot, viewDir
+
+def applyCameraTranformation(sv3d: bpy.types.SpaceView3D, viewPos: Vector, viewRot: Quaternion, forceSetView = False):
+    rv3d = sv3d.region_3d
+    if not forceSetView and rv3d.view_perspective == "CAMERA" and sv3d.lock_camera and sv3d.camera is not None:
+        sv3d.camera.location = viewPos
+        setObjectRotationQuaternion(sv3d.camera, viewRot)
+    else:
+        rv3d.view_rotation = viewRot
+        setViewPos(rv3d, viewPos)
+
 def considerViewToCamera(sv3d: bpy.types.SpaceView3D):
     rv3d = sv3d.region_3d
-    if rv3d.view_perspective == "CAMERA" and not sv3d.lock_camera:
+    if rv3d.view_perspective == "CAMERA" and not sv3d.lock_camera and sv3d.camera is not None:
         viewToCamera(sv3d)
         rv3d.view_perspective = "PERSP" # todo: what should happen if camera is ortho?
 
+def considerCameraToView(sv3d: bpy.types.SpaceView3D):
+    rv3d = sv3d.region_3d
+    if rv3d.view_perspective == "CAMERA" and sv3d.lock_camera and sv3d.camera is not None:
+        cameraToView(sv3d)
+
 def viewToCamera(sv3d: bpy.types.SpaceView3D):
     camera = sv3d.camera
-    # camera.rotation_quaternion = sv3d.region_3d.view_rotation
+    sv3d.region_3d.view_rotation = getObjectRotationQuaternion(camera)
     setViewPos(sv3d.region_3d, camera.location)
+
+def cameraToView(sv3d: bpy.types.SpaceView3D):
+    rv3d = sv3d.region_3d
+    viewPos, _viewDir = getViewPos(rv3d)
+    camera = sv3d.camera
+    camera.location = viewPos
+
+def getObjectRotationQuaternion(obj: bpy.types.Object) -> Quaternion:
+    if obj.rotation_mode == "QUATERNION":
+        return Quaternion(obj.rotation_quaternion)
+    elif obj.rotation_mode == "AXIS_ANGLE":
+        return Quaternion(Vector((obj.rotation_axis_angle[0], obj.rotation_axis_angle[1], obj.rotation_axis_angle[2])), obj.rotation_axis_angle[3])
+    return mathutils.Euler(obj.rotation_euler).to_quaternion()
+
+def setObjectRotationQuaternion(obj: bpy.types.Object, rot: Quaternion):
+    if obj.rotation_mode == "QUATERNION":
+        obj.rotation_quaternion = rot
+    elif obj.rotation_mode == "AXIS_ANGLE":
+        obj.rotation_axis_angle = rot.to_axis_angle()
+    else:
+        obj.rotation_euler = rot.to_euler(obj.rotation_mode)
 
 def getPitchYaw(dir: Vector, up: Vector):
     pitch = 0.0 if dir[2] <= -1 else (math.pi if dir[2] >= 1 else math.acos(-dir[2]))
