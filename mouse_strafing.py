@@ -212,20 +212,30 @@ class MouseStrafingOperator(bpy.types.Operator):
         castStart = viewPos + viewDir * sv3d.clip_start
         self.adjustPivotSuccess = False
         attemptCount = 0
+        invert = False # there is no way to retrieve all hits, so we need to spam some rays back and forth.
+        minCast = viewPos + viewDir * sv3d.clip_start
+        maxCast = viewPos + viewDir * sv3d.clip_end
         while attemptCount < 100:
             attemptCount = attemptCount + 1
-            hit = context.scene.ray_cast(context.window.view_layer, castStart, viewDir, \
-                distance = sv3d.clip_end - sv3d.clip_start)
+            castDir = -viewDir if invert else viewDir
+            castLength = (minCast - castStart).dot(castDir) if invert else (maxCast - minCast).dot(castDir)
+            if not invert and castLength <= 0:
+                break
+            hit = context.scene.ray_cast(context.window.view_layer, castStart, castDir, distance = castLength)
             if not hit[0]:
                 break
-            isLookingAtBackface = Vector(hit[2]).dot(viewDir) > 0
-            if isLookingAtBackface and sv3d.shading.show_backface_culling:
+            hitBackface = Vector(hit[2]).dot(viewDir) > 0
+            if hitBackface and sv3d.shading.show_backface_culling:
+                if invert:
+                    invert = not invert
+                    continue
                 nudge = castStart.length * 0.000001
                 if nudge < 0.00001:
                     nudge = 0.00001
                 elif nudge > 0.004:
                     nudge = 0.004
                 castStart = hit[1] + viewDir * nudge
+                invert = not invert
                 continue
             newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
             sv3d.region_3d.view_distance = (newPivotPos - viewPos).length
