@@ -1,4 +1,4 @@
 mkdir mouse_strafing
 copy *.py mouse_strafing
-powershell Compress-Archive -Path mouse_strafing -DestinationPath mouse_strafing.zip -Force
+justzip -i mouse_strafing -o mouse_strafing.zip
 rmdir /S /Q mouse_strafing

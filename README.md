@@ -11,9 +11,11 @@ Addon preferences:
 # Installation
 ## For the tech-savvy
 1. Clone this repository.
-2. Run `package.bat`, which bundles the project in `mouse_strafing.zip`.
-3. In Blender, unbind animation playback from the spacebar.
-4. Install `mouse_strafing.zip` from the Blender Addons preferences page.
+2. Install Go.
+3. `go get github.com/Zyl9393/justzip`
+4. Run `package.bat`, which bundles the project in `mouse_strafing.zip`.
+5. In Blender, unbind animation playback from the spacebar.
+6. Install `mouse_strafing.zip` from the Blender Addons preferences page.
 
 ## For everyone else
 1. In Blender, unbind animation playback from the spacebar.
