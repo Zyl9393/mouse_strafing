@@ -2,7 +2,7 @@ bl_info = {
     "name": "Mouse Strafing",
     "description": "Strafe in the 3D View using the mouse.",
     "author": "Zyl",
-    "version": (1, 0),
+    "version": (2, 0),
     "blender": (2, 80, 0),
     "category": "3D View"
 }
