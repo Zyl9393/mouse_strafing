@@ -31,9 +31,41 @@ def signExp(base, exponent) -> float:
     s = math.pow(v, exponent)
     return s if base > 0 else -s
 
-def scaleDelta(delta, distance, sensitivity) -> float:
-    unadjustedDistance = signExp(1000 * 0.1 / 20, sensitivity) * 20
-    return signExp(delta * 0.1, sensitivity) * (distance / unadjustedDistance)
+lastDistPre = 0.0
+lastDynSens = 0.0
+
+def setDynamicSensitivityStats(delta: Vector, prefs: MouseStrafingPreferences):
+    dist = math.sqrt(delta[0]*delta[0] + delta[1]*delta[1])
+    distPre = dist * prefs.mousePreMultiplier
+    global lastDistPre
+    global lastDynSens
+    lastDistPre = distPre
+    lastDynSens = getDynamicSensitivity(delta, prefs)
+
+def getDynamicSensitivity(delta: Vector, prefs: MouseStrafingPreferences) -> float:
+    dist = math.sqrt(delta[0]*delta[0] + delta[1]*delta[1])
+    distPre = dist * prefs.mousePreMultiplier
+
+    minDynamicSensitivity = prefs.minDynamicSensitivity / 100.0
+    dynSens = 0.0
+
+    # these would probably be configurable in a more demanding application
+    minPrecisionWidth = 0.02
+    transitionQuadraticPart = 0.9
+
+    if distPre >= 1.0:
+        dynSens = 1.0
+    elif distPre <= minPrecisionWidth:
+        dynSens = minDynamicSensitivity
+    else:
+        a = (minDynamicSensitivity - 1) / (-(minPrecisionWidth - 1)*(minPrecisionWidth - 1))
+        dynamicSensitivityQuadratic = 1 + a*(-(distPre-1)*(distPre-1))
+
+        s = (1 - minDynamicSensitivity) / (1 - minPrecisionWidth)
+        dynamicSensitivityLinear = minDynamicSensitivity + s * (distPre - minPrecisionWidth)
+
+        dynSens = transitionQuadraticPart * dynamicSensitivityQuadratic + (1 - transitionQuadraticPart) * dynamicSensitivityLinear
+    return dynSens
 
 running = False
 
@@ -42,6 +74,9 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_idname = "view_3d.mouse_strafing"
     bl_label = "Mouse Strafing"
     bl_options = { "REGISTER", "BLOCKING" }
+
+    mousePostSanityMultiplierPan = 0.005
+    mousePostSanityMultiplierStrafe = 0.1
 
     wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
     inFast, inSlow = False, False
@@ -161,42 +196,51 @@ class MouseStrafingOperator(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def performMouseAction(self, context: bpy.types.Context, event: bpy.types.Event, action):
-        xDelta = event.mouse_x - event.mouse_prev_x
-        yDelta = event.mouse_y - event.mouse_prev_y
+        delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
+        modPan = self.modScale(False)
         modStrafe = self.modScale(True)
-        modTurn = self.modScale(False)
-        if action == "turnXY":
-            self.pan3dView(getSpaceView3D(context), Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
-                self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
-        elif action == "roll":
-            self.roll3dView(getSpaceView3D(context), Vector((xDelta * modTurn, -yDelta * modTurn if self.prefs.invertMouse else yDelta * modTurn)), \
-                self.prefs.sensitivityWasd if self.isWasding else self.prefs.sensitivityDefault)
-        else:
-            xDeltaStrafe = modStrafe * scaleDelta(xDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
-            yDeltaStrafe = modStrafe * scaleDelta(yDelta, self.prefs.strafingDistance, self.prefs.strafingPotential)
-            if action == "strafeXZ":
-                self.move3dView(getSpaceView3D(context), Vector((xDeltaStrafe, 0, -yDeltaStrafe)), Vector((0, 0, 0)))
-            elif action == "strafeXY":
-                self.move3dView(getSpaceView3D(context), Vector((xDeltaStrafe, yDeltaStrafe, 0)), Vector((0, 0, 0)))
-            elif action == "strafeXRappel":
-                self.move3dView(getSpaceView3D(context), Vector((xDeltaStrafe, 0, 0)), Vector((0, 0, yDeltaStrafe)))
-            elif action == "turnXRappel":
-                self.move3dView(getSpaceView3D(context), Vector((0, 0, 0)), Vector((0, 0, yDeltaStrafe)))
-                self.pan3dView(getSpaceView3D(context), Vector((xDelta * modTurn, 0)), self.prefs.sensitivityRappel)
 
-    def pan3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, sensitivity):
+        setDynamicSensitivityStats(delta, self.prefs)
+        processedPanDelta = delta * getDynamicSensitivity(delta, self.prefs)
+        panDelta = processedPanDelta * self.mousePostSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.75) if self.isWasding else self.prefs.sensitivityPan) * modPan
+        panDeltaRappel = 0.75 * panDelta
+
+        # A few words about what is going on here:
+        # It is easier to make larger mouse movements sideways than back and forth. That is useful for panning the view, because there generally
+        # is a greater need to turn left/right than up/down. For strafing, all directions are equally relevant. By doing the following, we
+        # 1. give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics
+        # 2. eliminate unwanted side-strafing by applying sensitivity per axis
+        processedStrafeDelta = delta * Vector((getDynamicSensitivity((delta[0], 0), self.prefs), getDynamicSensitivity((0, delta[1]*1.5), self.prefs)))
+        strafeDelta = processedStrafeDelta * self.mousePostSanityMultiplierStrafe * self.prefs.sensitivityStrafe * modStrafe
+
+        if action == "turnXY":
+            self.pan3dView(getSpaceView3D(context), Vector((panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[0])))
+        elif action == "roll":
+            self.roll3dView(getSpaceView3D(context), Vector((panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
+        else:
+            if action == "strafeXZ":
+                self.move3dView(getSpaceView3D(context), Vector((strafeDelta[0], 0, -strafeDelta[1])), Vector((0, 0, 0)))
+            elif action == "strafeXY":
+                self.move3dView(getSpaceView3D(context), Vector((strafeDelta[0], strafeDelta[1], 0)), Vector((0, 0, 0)))
+            elif action == "strafeXRappel":
+                self.move3dView(getSpaceView3D(context), Vector((strafeDelta[0], 0, 0)), Vector((0, 0, strafeDelta[1])))
+            elif action == "turnXRappel":
+                self.move3dView(getSpaceView3D(context), Vector((0, 0, 0)), Vector((0, 0, strafeDelta[1])))
+                self.pan3dView(getSpaceView3D(context), Vector((panDeltaRappel[0], 0)))
+
+    def pan3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector):
         viewPos, rot, _viewDir = prepareCameraTransformation(sv3d)
-        yawRot = Quaternion(Vector((0, 0, 1)), -delta[0]*0.017453292*sensitivity)
+        yawRot = Quaternion(Vector((0, 0, 1)), -delta[0])
         pitchAxis = Vector((1, 0, 0))
         pitchAxis.rotate(rot)
-        pitchRot = Quaternion(pitchAxis, delta[1]*0.017453292*sensitivity)
+        pitchRot = Quaternion(pitchAxis, delta[1])
         rot.rotate(pitchRot)
         rot.rotate(yawRot)
         applyCameraTranformation(sv3d, viewPos, rot)
 
-    def roll3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector, sensitivity):
+    def roll3dView(self, sv3d: bpy.types.SpaceView3D, delta: Vector):
         viewPos, rot, viewDir = prepareCameraTransformation(sv3d)
-        roll = Quaternion(viewDir, delta[0]*0.017453292*sensitivity)
+        roll = Quaternion(viewDir, delta[0])
         rot.rotate(roll)
         applyCameraTranformation(sv3d, viewPos, rot)
 
@@ -399,9 +443,15 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")
-    # blf.color(fontId, 240, 240, 240, 0.998)
-    # blf.position(fontId, 100, 100, 0)
-    # blf.draw(fontId, "Cam = " + getSpaceView3D(context).region_3d.view.__str__() + "\n" + "Lock = " + ("On" if getSpaceView3D(context).lock_camera else "Off"))
+    if op.prefs.displayDynamicSensitivityStats:
+        global lastDistPre
+        global lastDynSens
+        if lastDistPre >= 1:
+            blf.color(fontId, 0.95, 0.95, 0.95, 0.99)
+        else:
+            blf.color(fontId, 0.75, 0.75, 0.75, 0.99)
+        blf.position(fontId, 100, 100, 0)
+        blf.draw(fontId, "DynamicSensitivity(%.3f) = %.1f%%" % (lastDistPre, lastDynSens * 100.0))
 
 km = None
 kmi = None

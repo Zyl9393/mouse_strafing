@@ -3,27 +3,28 @@ import bpy
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
 
-    strafingDistance: bpy.props.FloatProperty(name = "Moderate Strafing Distance", description = "The distance to travel during an average mouse cursor movement of 1000 pixels over 20 frames. Drives the multiplier of the speed curve", \
-        default = 40, min = 0.1, max = 5000, soft_min = 1, soft_max = 1000, step = 10, precision = 2)
-    strafingPotential: bpy.props.FloatProperty(name = "Strafing Potential", description = "Increase this value to have to move the mouse less for large speeds, but more for slow speeds. Higher values are more difficult to control", \
-        default = 1.2, min = 1.0, max = 2.0, soft_min = 1.0, soft_max = 1.6, step = 1, precision = 2)
+    mousePreMultiplier: bpy.props.FloatProperty(name = "Mouse Pre Multiplier", description = "Multiply all mouse input with this value before applying dynamic sensitivity " + \
+        "Should be set such that the fastest comfortable mouse movement barely maxes out dynamic sensitivity", \
+        default = 0.006, min = 0.000001, soft_min = 0.000001, max = 1, soft_max = 1, step = 0.0001, precision = 6)
+    minDynamicSensitivity: bpy.props.FloatProperty(name = "Minimum Dynamic Sensitivity %", description = "Allow mouse speed to be reduced to as little as this percentage during slow movements for greater control. " + \
+        "E.g. Minimum Dynamic Sensitivity of 25% = quarter speed during slow movement. Set to 100% to disable", \
+        default = 33.3, min = 0.0, soft_min = 10.0, max = 100.0, soft_max = 100, step = 100, precision = 1, subtype = "PERCENTAGE")
+    displayDynamicSensitivityStats: bpy.props.BoolProperty(name = "Display Dynamic Sensitivity Stats", description = "Display dynamic sensitivity stats while using the addon. Useful for fine-tuning the settings above", default = False)
     
     wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed when using WASD keys to move", \
         default = 8.0, min = 0.001, max = 20000, soft_min = 0.01, soft_max = 4000, step = 10, precision = 2)
     wasdTime: bpy.props.FloatProperty(name = "WASD Acceleration Time", description = "Time until top speed is reached when using WASD keys to move", \
         default = 0.2, min = 0.0, max = 4.0, soft_min = 0.0, soft_max = 1000, step = 1, precision = 2)
 
-    sensitivityDefault: bpy.props.FloatProperty(name = "Sensitivity", description = "Default mouse sensitivity when panning the 3D View", \
-        default = 0.25, min = 0.01, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
-    sensitivityWasd: bpy.props.FloatProperty(name = "WASD Sensitivity", description = "Mouse sensitivity when panning in the 3D View while using WASD keys to move. Lower values feel better when using a high WASD Top Speed", \
-        default = 0.15, min = 0.01, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
-    sensitivityRappel: bpy.props.FloatProperty(name = "Rappel Sensitivity", description = "Mouse sensitivity when panning in the 3D View while using the rappel function, during which panning the desired amount is usually more difficult", \
-        default = 0.15, min = 0.0, max = 2.0, soft_min = 0.01, soft_max = 2.0, step = 1, precision = 2)
+    sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Additional mouse multiplier when panning the 3D View", \
+        default = 1.0, min = 0.01, max = 100.0, soft_min = 0.1, soft_max = 10.0, step = 1, precision = 2)
+    sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Additional mouse multiplier when mouse strafing", \
+        default = 1.0, min = 0.01, max = 100.0, soft_min = 0.1, soft_max = 10.0, step = 1, precision = 2)
 
     invertMouse: bpy.props.BoolProperty(name = "Invert Mouse", description = "Invert effect of vertical mouse movement when looking around", default = True)
     showCrosshair: bpy.props.BoolProperty(name = "Show Crosshair", description = "Show crosshair during strafe actions.", default = True)
     wheelDistance: bpy.props.FloatProperty(name = "Wheel Distance", description = "Set how far to move when using the mouse wheel", \
-        default = 0.5, min = -128.0, max = 128.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)
+        default = 0.5, min = -1000.0, max = 1000.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)
 
     adjustPivot: bpy.props.BoolProperty(name = "Automatically Relocate Pivot", description = "Automatically relocate the 3D View's "
         "pivot point (instead of manually by pressing 'C') to the surface of whatever object you are looking at while using the operator", default = False)
@@ -48,17 +49,21 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         layout: bpy.types.UILayout = self.layout
         
         sensorRow = layout.row()
-        sensorRow.prop(self, "strafingDistance")
-        sensorRow.prop(self, "strafingPotential")
+        sensorRow.prop(self, "mousePreMultiplier")
+
+        dynamicSensitivityRow = layout.row()
+        dynamicSensitivityRow.prop(self, "minDynamicSensitivity")
+
+        debugRow = layout.row()
+        debugRow.prop(self, "displayDynamicSensitivityStats")
         
         wasdRow = layout.row()
         wasdRow.prop(self, "wasdTopSpeed")
         wasdRow.prop(self, "wasdTime")
 
         sensitivityRow = layout.row()
-        sensitivityRow.prop(self, "sensitivityDefault")
-        sensitivityRow.prop(self, "sensitivityWasd")
-        sensitivityRow.prop(self, "sensitivityRappel")
+        sensitivityRow.prop(self, "sensitivityPan")
+        sensitivityRow.prop(self, "sensitivityStrafe")
 
         miscRow = layout.row()
         miscRow.prop(self, "invertMouse")
