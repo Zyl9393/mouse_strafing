@@ -120,6 +120,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         if not running and event.value == "PRESS":
             self.area = context.area
             _sv3d, self.region = getViews3D(context)
+            self.considerCenterCameraView(context)
             running = True
             self.prefs = context.preferences.addons["mouse_strafing"].preferences
             context.window_manager.modal_handler_add(self)
@@ -128,6 +129,11 @@ class MouseStrafingOperator(bpy.types.Operator):
             context.area.tag_redraw()
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
+
+    def considerCenterCameraView(self, context: bpy.types.Context):
+        sv3d, rv3d = getViews3D(context)
+        if rv3d.view_perspective == "CAMERA":
+            rv3d.view_camera_offset = (0.0, 0.0)
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event):
         if not running:
