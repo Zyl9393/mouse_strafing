@@ -139,7 +139,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.performMouseAction(context, event, self.prefs.mmbAction)
             return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
-            mod = self.modScale(True)
+            mod = self.modScaleStrafe()
             self.move3dView(getSpaceView3D(context), \
                 Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                 Vector((0, 0, 0)))
@@ -319,7 +319,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def wasdDelta(self):
         now = time.perf_counter()
-        delta = self.modScale(True) * self.wasdCurSpeed * (now - self.wasdPreviousTime)
+        delta = self.modScaleStrafe() * self.wasdCurSpeed * (now - self.wasdPreviousTime)
         self.wasdPreviousTime = now
         return delta
     
