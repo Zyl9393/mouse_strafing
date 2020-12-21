@@ -212,7 +212,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         # is a greater need to turn left/right than up/down. For strafing, all directions are equally relevant. By doing the following, we
         # 1. give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics
         # 2. eliminate unwanted side-strafing by applying sensitivity per axis
-        deltaStrafe = Vector((delta[0], delta[1]*1.3))
+        deltaStrafe = Vector((delta[0], delta[1]*1.2))
         processedStrafeDelta = deltaStrafe * Vector((getDynamicSensitivity((deltaStrafe[0], 0), self.prefs), getDynamicSensitivity((0, deltaStrafe[1]), self.prefs)))
         strafeDelta = processedStrafeDelta * self.mousePostSanityMultiplierStrafe * self.prefs.sensitivityStrafe * modStrafe
 
