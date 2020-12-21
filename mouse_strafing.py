@@ -73,7 +73,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     """Strafe in the 3D View using the mouse."""
     bl_idname = "view_3d.mouse_strafing"
     bl_label = "Mouse Strafing"
-    bl_options = { "REGISTER", "BLOCKING" }
+    bl_options = { "BLOCKING" }
 
     mousePostSanityMultiplierPan = 0.005
     mousePostSanityMultiplierStrafe = 0.1
@@ -125,6 +125,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
             return self.updateMode(context, event)
         elif event.type == "MOUSEMOVE":
+            if event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y:
+                return {"RUNNING_MODAL"}
             if self.isClicking:
                 self.resetMouse(context, event)
             if self.lmbDown and not self.rmbDown:
@@ -339,8 +341,13 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
 
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
-        context.window.cursor_warp(context.region.x + context.region.width // 2 - (event.mouse_x - event.mouse_prev_x)*0.5, \
-            context.region.y + context.region.height // 2 - (event.mouse_y - event.mouse_prev_y)*0.5)
+        delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
+        offset = Vector((-clamp(delta[0]*0.5, -context.region.width // 2, context.region.width // 2), \
+            -clamp(delta[1]*0.5, -context.region.height // 2, context.region.height // 2)))
+        context.window.cursor_warp(context.region.x + context.region.width // 2 + offset[0], context.region.y + context.region.height // 2 + offset[1])
+
+def clamp(x, min, max):
+    return min if x < min else (max if x > max else x)
 
 def prepareCameraTransformation(sv3d: bpy.types.SpaceView3D) -> (Vector, Quaternion, Vector):
     considerViewToCamera(sv3d)
