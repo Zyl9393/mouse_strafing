@@ -76,10 +76,10 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_options = { "BLOCKING" }
 
     mousePostSanityMultiplierPan = 0.003
-    mousePostSanityMultiplierStrafe = 0.1
+    mousePostSanityMultiplierStrafe = 0.05
 
     wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
-    inFast, inSlow = False, False
+    inFast, inSlowStrafe, inSlowPan = False, False, False
 
     lmbDown, rmbDown, mmbDown = False, False, False
     isClicking = False
@@ -115,7 +115,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     def modal(self, context: bpy.types.Context, event: bpy.types.Event):
         if not running:
             return {"CANCELLED"}
-        self.inFast, self.inSlow = event.shift, event.ctrl or event.alt
+        self.inFast, self.inSlowStrafe, self.inSlowPan = event.shift, event.ctrl, event.alt
         if event.type == kmi.type:
             if event.value == "PRESS":
                 self.modeKeyReleased = False
@@ -164,8 +164,25 @@ class MouseStrafingOperator(bpy.types.Operator):
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
 
-    def modScale(self, allowFast):
-        return 1 if self.inFast == self.inSlow else (5 if allowFast else 1) if self.inFast else 0.2
+    def modScaleStrafe(self):
+        inFastStrafe, inSlowStrafe = self.inFast and (self.inFast != self.inSlowStrafe), self.inSlowStrafe and (self.inSlowStrafe != self.inFast)
+        if inFastStrafe:
+            return 5
+        if inSlowStrafe and self.inSlowPan:
+            return 0.02
+        if inSlowStrafe:
+            return 0.2
+        if self.inSlowPan:
+            return 0.5
+        return 1
+
+    def modScalePan(self):
+        inSlowStrafe = self.inSlowStrafe and (self.inSlowStrafe != self.inFast)
+        if self.inSlowPan:
+            return 0.2
+        if inSlowStrafe:
+            return 0.5
+        return 1
 
     def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
         self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
@@ -199,8 +216,8 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def performMouseAction(self, context: bpy.types.Context, event: bpy.types.Event, action):
         delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
-        modPan = self.modScale(False)
-        modStrafe = self.modScale(True)
+        modPan = self.modScalePan()
+        modStrafe = self.modScaleStrafe()
 
         setDynamicSensitivityStats(delta, self.prefs)
         processedPanDelta = delta * getDynamicSensitivity(delta, self.prefs)

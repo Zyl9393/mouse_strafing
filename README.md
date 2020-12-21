@@ -38,4 +38,4 @@ While holding the spacebar, press R to reset view camera roll.
 Just as with the Fly Operator, you can use WASD (and Q and E) to move and strafe with the keyboard.
 
 ## Speed adjustment
-Hold the Shift key to go 5 times faster. Hold the Ctrl or Alt key to go 5 times slower. For turning, only going slower with Ctrl or Alt will be respected.
+Hold the Shift key to go 5 times faster. Hold the Ctrl key to go 5 times slower. For panning, you can reduce the speed by pressing Alt. Hold Ctrl and Alt at the same time to go at only 2% speed.

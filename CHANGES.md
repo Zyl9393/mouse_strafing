@@ -5,6 +5,7 @@
 * Addon now cooperates with "Lock camera to view" and "Local camera" settings.
 * Improved ergonomics of mouse acceleration.
 * `package.bat` now creates Linux-compatible archives.
+* Ctrl and Alt now affect strafe speed and pan sensitivity, respectively. Hold both to greatly reduce strafe speed.
 
 # 1.0 (2019-10-01)
 * Initial release
