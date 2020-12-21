@@ -3,13 +3,14 @@ import bpy
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
 
-    mousePreMultiplier: bpy.props.FloatProperty(name = "Mouse Pre Multiplier", description = "Multiply all mouse input with this value before applying dynamic sensitivity " + \
-        "Should be set such that the fastest comfortable mouse movement barely maxes out dynamic sensitivity", \
+    mousePreMultiplier: bpy.props.FloatProperty(name = "Mouse Pre Multiplier", description = "Multiply all mouse input with this value before doing anything else with it. Dynamic Sensitivity is applied right after. " + \
+        "Should be set such that the fastest comfortable mouse movement barely maxes out dynamic sensitivity. If you think it may be too high, it probably is. Enable Display Dynamic Sensitivity Stats for help with tuning this value", \
         default = 0.006, min = 0.000001, soft_min = 0.000001, max = 1, soft_max = 1, step = 0.0001, precision = 6)
-    minDynamicSensitivity: bpy.props.FloatProperty(name = "Minimum Dynamic Sensitivity %", description = "Allow mouse speed to be reduced to as little as this percentage during slow movements for greater control. " + \
-        "E.g. Minimum Dynamic Sensitivity of 25% = quarter speed during slow movement. Set to 100% to disable", \
-        default = 33.3, min = 0.0, soft_min = 10.0, max = 100.0, soft_max = 100, step = 100, precision = 1, subtype = "PERCENTAGE")
-    displayDynamicSensitivityStats: bpy.props.BoolProperty(name = "Display Dynamic Sensitivity Stats", description = "Display dynamic sensitivity stats while using the addon. Useful for fine-tuning the settings above", default = False)
+    minDynamicSensitivity: bpy.props.FloatProperty(name = "Minimum Dynamic Sensitivity %", description = "Allow registered mouse speed to be reduced to as little as this percentage during slow movements for greater control. " + \
+        "E.g. Minimum Dynamic Sensitivity of 25% = quarter speed during slow movement. Set to 100% to disable. Lower values provide more control during slow movements, but less during fast ones", \
+        default = 40.0, min = 0.0, soft_min = 25.0, max = 100.0, soft_max = 100, step = 100, precision = 1, subtype = "PERCENTAGE")
+    displayDynamicSensitivityStats: bpy.props.BoolProperty(name = "Display Dynamic Sensitivity Stats", description = "Display dynamic sensitivity stats while mouse-strafing and panning using the add-on. " \
+        "Useful for fine-tuning the settings above; the displayed text will flash white when moving the mouse fast enough to max out dynamic sensitivity", default = False)
     
     wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed when using WASD keys to move", \
         default = 8.0, min = 0.001, max = 20000, soft_min = 0.01, soft_max = 4000, step = 10, precision = 2)

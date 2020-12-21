@@ -75,7 +75,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_label = "Mouse Strafing"
     bl_options = { "BLOCKING" }
 
-    mousePostSanityMultiplierPan = 0.005
+    mousePostSanityMultiplierPan = 0.003
     mousePostSanityMultiplierStrafe = 0.1
 
     wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
@@ -456,6 +456,8 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         global lastDynSens
         if lastDistPre >= 1:
             blf.color(fontId, 0.95, 0.95, 0.95, 0.99)
+            blf.position(fontId, 100, 70, 0)
+            blf.draw(fontId, "[ MAXED OUT ]")
         else:
             blf.color(fontId, 0.75, 0.75, 0.75, 0.99)
         blf.position(fontId, 100, 100, 0)
