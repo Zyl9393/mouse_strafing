@@ -162,11 +162,14 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.performMouseAction(context, event, self.prefs.mmbAction)
             return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
-            mod = self.modScaleStrafe()
             sv3d, rv3d = getViews3D(context)
-            self.move3dView(sv3d, rv3d, \
-                Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
-                Vector((0, 0, 0)))
+            if self.prefs.wheelMoveFunction == "moveZ":
+                mod = self.modScaleStrafe()
+                self.move3dView(sv3d, rv3d, \
+                    Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
+                    Vector((0, 0, 0)))
+            elif self.prefs.wheelMoveFunction == "changeFOV":
+                self.nudgeFov(sv3d, rv3d, (True if event.type == "WHEELUPMOUSE" else False) != self.prefs.invertMouse)
             return {"RUNNING_MODAL"}
         elif event.type in self.wasdKeys:
             if self.stopSignal is None:
@@ -187,6 +190,14 @@ class MouseStrafingOperator(bpy.types.Operator):
             context.area.tag_redraw()
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
+
+    def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, up: bool):
+        if rv3d.view_perspective == "CAMERA":
+            if sv3d.lock_camera and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
+                cam = bpy.types.Camera(sv3d.camera.data)
+                cam.lens = nudgeFovValue(cam.lens, up)
+        else:
+            sv3d.lens = nudgeFovValue(sv3d.lens, up)
 
     def modScaleStrafe(self):
         inFastStrafe, inSlowStrafe = self.inFast and (self.inFast != self.inSlowStrafe), self.inSlowStrafe and (self.inSlowStrafe != self.inFast)
@@ -391,6 +402,35 @@ class MouseStrafingOperator(bpy.types.Operator):
 
 def clamp(x, min, max):
     return min if x < min else (max if x > max else x)
+
+def clampLensValue(lensFunc):
+    def clampFunc(lens: float, up: bool):
+        return clamp(lensFunc(lens, up), 1.0, 250.0)
+    return clampFunc
+
+@clampLensValue
+def nudgeFovValue(lens: float, up: bool) -> float:
+    lens = round(lens * 8, 0) / 8.0
+    if up:
+        if lens >= 50:
+            return lens + 2
+        if lens >= 20:
+            return lens + 1
+        if lens >= 10:
+            return lens + 0.5
+        if lens >= 5:
+            return lens + 0.25
+        return lens + 0.125
+    else:
+        if lens > 50:
+            return lens - 2
+        if lens > 20:
+            return lens - 1
+        if lens > 10:
+            return lens - 0.5
+        if lens > 5:
+            return lens - 0.25
+        return lens - 0.125
 
 def prepareCameraTransformation(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> (Vector, Quaternion, Vector):
     considerViewToCamera(sv3d, rv3d)

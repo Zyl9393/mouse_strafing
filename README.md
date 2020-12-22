@@ -26,7 +26,7 @@ Not a problem. You can change the binding in the preferences if you feel you hav
 
 # Usage
 ## Strafing
-In the 3D View, press and hold the spacebar. A cross will appear in the center of the screen. Click and hold the left, right or middle mouse button to enable mouse strafing. Additionally, hold the left and right mouse button together for a 4th movement option. Then use the mouse to strafe or turn. Which buttons do what can be configured in the addon preferences.
+In the 3D View, press and hold the spacebar. A cross will appear in the center of the screen. Click and hold the left, right or middle mouse button to enable pannig and mouse strafing. Additionally, hold the left and right mouse button together for a 4th movement option. Then move the mouse to strafe or turn. Which buttons do what can be configured in the addon preferences.
 
 ## Relocate Pivot
 While holding the spacebar, press C to relocate the 3D View's pivot point to the surface which you are looking at. When backface culling is enabled, backfaces will be ignored.
@@ -36,6 +36,9 @@ While holding the spacebar, press R to reset view camera roll.
 
 ## WASD
 Just as with the Fly Operator, you can use WASD (and Q and E) to move and strafe with the keyboard.
+
+## Change Field of View
+Use the scroll wheel to change the field of view or move a set distance. (See preferences)
 
 ## Speed adjustment
 Hold the Shift key to go 5 times faster. Hold the Ctrl key to go 5 times slower. For panning, you can reduce the speed by pressing Alt. Hold Ctrl and Alt at the same time to go at only 2% speed.
