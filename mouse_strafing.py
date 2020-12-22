@@ -97,8 +97,10 @@ class MouseStrafingOperator(bpy.types.Operator):
     inFast, inSlowStrafe, inSlowPan = False, False, False
 
     lmbDown, rmbDown, mmbDown = False, False, False
-    isClicking = False
-    modeKeyReleased = False
+    isInMouseMode = False
+    modeKeyDown = True
+    modeKeyPresses = 0
+    inEscape = False
 
     wDown, aDown, sDown, dDown, qDown, eDown = False, False, False, False, False, False
     isWasding = False
@@ -141,16 +143,20 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.inFast, self.inSlowStrafe, self.inSlowPan = event.shift, event.ctrl, event.alt
         if event.type == kmi.type:
             if event.value == "PRESS":
-                self.modeKeyReleased = False
+                self.modeKeyPresses = self.modeKeyPresses + (0 if self.modeKeyDown else 1)
+                self.modeKeyDown = True
             elif event.value == "RELEASE":
-                self.modeKeyReleased = True
+                self.modeKeyDown = False
+            return self.considerExitOperator(context)
+        elif event.type == "ESC":
+            self.inEscape = True if event.value == "PRESS" else (False if event.value == "RELEASE" else self.inEscape)
             return self.considerExitOperator(context)
         elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
             return self.updateMode(context, event)
         elif event.type == "MOUSEMOVE":
             if event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y:
                 return {"RUNNING_MODAL"}
-            if self.isClicking:
+            if self.isInMouseMode:
                 self.resetMouse(context, event)
             if self.lmbDown and not self.rmbDown:
                 self.performMouseAction(context, event, self.prefs.lmbAction)
@@ -223,14 +229,15 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
         self.rmbDown = event.value == "PRESS" if event.type == "RIGHTMOUSE" else self.rmbDown
         self.mmbDown = event.value == "PRESS" if event.type == "MIDDLEMOUSE" else self.mmbDown
-        enteringStrafe = (self.lmbDown or self.rmbDown or self.mmbDown) and not self.isClicking
-        leavingStrafe = self.isClicking and not (self.lmbDown or self.rmbDown or self.mmbDown)
-        self.isClicking = self.lmbDown or self.rmbDown or self.mmbDown
-        if enteringStrafe:
+        enteringMouseMode = (self.lmbDown or self.rmbDown or self.mmbDown) and not self.isInMouseMode
+        leavingMouseMode = self.isInMouseMode and not (self.lmbDown or self.rmbDown or self.mmbDown)
+        self.isInMouseMode = self.lmbDown or self.rmbDown or self.mmbDown
+        if enteringMouseMode:
             context.window.cursor_set("NONE")
             context.area.tag_redraw()
-        elif leavingStrafe:
-            return self.exitStrafe(context)
+        elif leavingMouseMode:
+            self.exitMouseMode(context)
+            return self.considerExitOperator(context)
         return {"RUNNING_MODAL"}
 
     def updateKeys(self, context: bpy.types.Context, event: bpy.types.Event):
@@ -368,14 +375,15 @@ class MouseStrafingOperator(bpy.types.Operator):
         if self.wasdCurSpeed > self.prefs.wasdTopSpeed:
             self.wasdCurSpeed = self.prefs.wasdTopSpeed
 
-    def exitStrafe(self, context: bpy.types.Context):
+    def exitMouseMode(self, context: bpy.types.Context):
         self.centerMouse(context)
         context.window.cursor_set("DEFAULT")
         context.area.tag_redraw()
-        return self.considerExitOperator(context)
 
     def considerExitOperator(self, context: bpy.types.Context):
-        if self.modeKeyReleased and not self.isClicking:
+        if (not self.prefs.toggleMode and not self.modeKeyDown and not self.isInMouseMode) or (self.prefs.toggleMode and self.modeKeyPresses > 0) or (self.inEscape):
+            if self.isInMouseMode:
+                self.exitMouseMode(context)
             return self.exitOperator(context)
         return {"RUNNING_MODAL"}
 
@@ -519,7 +527,7 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         blf.position(fontId, x, y, 0)
         blf.draw(fontId, "+")
         color = ((0.1, 1, 0.05, 1) if op.adjustPivotSuccess else (1, 0.1, 0.05, 1)) if op.cDown else \
-            (1, 1, 1, 1) if op.isClicking else (0.75, 0.75, 0.75, 1)
+            (1, 1, 1, 1) if op.isInMouseMode else (0.75, 0.75, 0.75, 1)
         blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")

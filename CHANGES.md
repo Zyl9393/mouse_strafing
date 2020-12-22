@@ -8,6 +8,7 @@
 * Ctrl and Alt now affect strafe speed and pan sensitivity, respectively. Hold both to greatly reduce strafe speed.
 * Quad views are now somewhat supported. Blender seems to have a slew of its own bugs with them.
 * The scroll wheel can now be configured to change the field of view.
+* Can now set strafe-mode to be toggleable instead of hold-to-strafe.
 
 # 1.0 (2019-10-01)
 * Initial release
