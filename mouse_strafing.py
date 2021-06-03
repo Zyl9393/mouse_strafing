@@ -46,41 +46,23 @@ def signExp(base, exponent) -> float:
     s = math.pow(v, exponent)
     return s if base > 0 else -s
 
-lastDistPre = 0.0
-lastDynSens = 0.0
-
-def setDynamicSensitivityStats(delta: Vector, prefs: MouseStrafingPreferences):
-    dist = math.sqrt(delta[0]*delta[0] + delta[1]*delta[1])
-    distPre = dist * prefs.mousePreMultiplier
-    global lastDistPre
-    global lastDynSens
-    lastDistPre = distPre
-    lastDynSens = getDynamicSensitivity(delta, prefs)
-
 def getDynamicSensitivity(delta: Vector, prefs: MouseStrafingPreferences) -> float:
-    dist = math.sqrt(delta[0]*delta[0] + delta[1]*delta[1])
-    distPre = dist * prefs.mousePreMultiplier
+    # Blender turns many OS-level mouse movement event into few addon-level mouse movement events.
+    # Any mouse acceleration based on these events must have limited effect, or it will cause problems whenever framerate is low.
 
-    minDynamicSensitivity = prefs.minDynamicSensitivity / 100.0
-    dynSens = 0.0
+    minDynamicSensitivity = 0.5
+    minPrecisionWidth = 0.2
+    dynamicSensitivityTop = 15.0
 
-    # these would probably be configurable in a more demanding application
-    minPrecisionWidth = 0.02
-    transitionQuadraticPart = 0.9
+    dots = math.sqrt(delta[0]*delta[0] + delta[1]*delta[1])
 
-    if distPre >= 1.0:
-        dynSens = 1.0
-    elif distPre <= minPrecisionWidth:
-        dynSens = minDynamicSensitivity
+    if dots >= dynamicSensitivityTop:
+        return 1.0
+    elif dots <= (minPrecisionWidth * dynamicSensitivityTop):
+        return minDynamicSensitivity
     else:
-        a = (minDynamicSensitivity - 1) / (-(minPrecisionWidth - 1)*(minPrecisionWidth - 1))
-        dynamicSensitivityQuadratic = 1 + a*(-(distPre-1)*(distPre-1))
-
-        s = (1 - minDynamicSensitivity) / (1 - minPrecisionWidth)
-        dynamicSensitivityLinear = minDynamicSensitivity + s * (distPre - minPrecisionWidth)
-
-        dynSens = transitionQuadraticPart * dynamicSensitivityQuadratic + (1 - transitionQuadraticPart) * dynamicSensitivityLinear
-    return dynSens
+        s = (1 - minDynamicSensitivity) / (dynamicSensitivityTop - (dynamicSensitivityTop * minPrecisionWidth))
+        return minDynamicSensitivity + s * (dots - (dynamicSensitivityTop * minPrecisionWidth))
 
 running = False
 
@@ -90,8 +72,8 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_label = "Mouse Strafing"
     bl_options = { "BLOCKING" }
 
-    mousePostSanityMultiplierPan = 0.003
-    mousePostSanityMultiplierStrafe = 0.05
+    mouseSanityMultiplierPan = 0.003
+    mouseSanityMultiplierStrafe = 0.05
 
     wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
     inFast, inSlowStrafe, inSlowPan = False, False, False
@@ -225,9 +207,9 @@ class MouseStrafingOperator(bpy.types.Operator):
         return 1
 
     def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
-        self.lmbDown = event.value == "PRESS" and event.value != "RELEASE" if event.type == "LEFTMOUSE" else self.lmbDown
-        self.rmbDown = event.value == "PRESS" and event.value != "RELEASE" if event.type == "RIGHTMOUSE" else self.rmbDown
-        self.mmbDown = event.value == "PRESS" and event.value != "RELEASE" if event.type == "MIDDLEMOUSE" else self.mmbDown
+        self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
+        self.rmbDown = event.value == "PRESS" if event.type == "RIGHTMOUSE" else self.rmbDown
+        self.mmbDown = event.value == "PRESS" if event.type == "MIDDLEMOUSE" else self.mmbDown
         enteringMouseMode = (self.lmbDown or self.rmbDown or self.mmbDown) and not self.isInMouseMode
         leavingMouseMode = self.isInMouseMode and not (self.lmbDown or self.rmbDown or self.mmbDown)
         self.isInMouseMode = self.lmbDown or self.rmbDown or self.mmbDown
@@ -259,20 +241,19 @@ class MouseStrafingOperator(bpy.types.Operator):
         delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
         modPan = self.modScalePan()
         modStrafe = self.modScaleStrafe()
+        dynamicSensitivity = getDynamicSensitivity(delta, self.prefs)
 
-        setDynamicSensitivityStats(delta, self.prefs)
-        processedPanDelta = delta * getDynamicSensitivity(delta, self.prefs)
-        panDelta = processedPanDelta * self.mousePostSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.75) if self.isWasding else self.prefs.sensitivityPan) * modPan
+        processedPanDelta = delta * dynamicSensitivity
+        # Panning feels more sensitive during WASD movement.
+        panDelta = processedPanDelta * self.mouseSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.75) if self.isWasding else self.prefs.sensitivityPan) * modPan
         panDeltaRappel = 0.75 * panDelta
 
-        # A few words about what is going on here:
         # It is easier to make larger mouse movements sideways than back and forth. That is useful for panning the view, because there generally
-        # is a greater need to turn left/right than up/down. For strafing, all directions are equally relevant. By doing the following, we
-        # 1. give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics
-        # 2. eliminate unwanted side-strafing by applying sensitivity per axis
+        # is a greater need to turn left/right than up/down. For strafing, forwards/backwards should not be more physically taxing than sideways movement.
+        # By doing the following, we give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics.
         deltaStrafe = Vector((delta[0], delta[1]*1.2))
-        processedStrafeDelta = deltaStrafe * Vector((getDynamicSensitivity((deltaStrafe[0], 0), self.prefs), getDynamicSensitivity((0, deltaStrafe[1]), self.prefs)))
-        strafeDelta = processedStrafeDelta * self.mousePostSanityMultiplierStrafe * self.prefs.sensitivityStrafe * modStrafe
+        processedStrafeDelta = deltaStrafe * dynamicSensitivity
+        strafeDelta = processedStrafeDelta * self.mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * modStrafe
 
         sv3d, rv3d = getViews3D(context)
         if action == "turnXY":
@@ -532,17 +513,6 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")
-    if op.prefs.displayDynamicSensitivityStats:
-        global lastDistPre
-        global lastDynSens
-        if lastDistPre >= 1:
-            blf.color(fontId, 0.95, 0.95, 0.95, 0.99)
-            blf.position(fontId, 100, 70, 0)
-            blf.draw(fontId, "[ MAXED OUT ]")
-        else:
-            blf.color(fontId, 0.75, 0.75, 0.75, 0.99)
-        blf.position(fontId, 100, 100, 0)
-        blf.draw(fontId, "DynamicSensitivity(%.3f) = %.1f%%" % (lastDistPre, lastDynSens * 100.0))
 
 km = None
 kmi = None
