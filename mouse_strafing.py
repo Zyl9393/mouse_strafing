@@ -154,10 +154,9 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
             return self.updateMode(context, event)
         elif event.type == "MOUSEMOVE":
-            if event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y:
+            if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
                 return {"RUNNING_MODAL"}
-            if self.isInMouseMode:
-                self.resetMouse(context, event)
+            self.resetMouse(context, event)
             if self.lmbDown and not self.rmbDown:
                 self.performMouseAction(context, event, self.prefs.lmbAction)
             elif not self.lmbDown and self.rmbDown:
@@ -226,9 +225,9 @@ class MouseStrafingOperator(bpy.types.Operator):
         return 1
 
     def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
-        self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
-        self.rmbDown = event.value == "PRESS" if event.type == "RIGHTMOUSE" else self.rmbDown
-        self.mmbDown = event.value == "PRESS" if event.type == "MIDDLEMOUSE" else self.mmbDown
+        self.lmbDown = event.value == "PRESS" and event.value != "RELEASE" if event.type == "LEFTMOUSE" else self.lmbDown
+        self.rmbDown = event.value == "PRESS" and event.value != "RELEASE" if event.type == "RIGHTMOUSE" else self.rmbDown
+        self.mmbDown = event.value == "PRESS" and event.value != "RELEASE" if event.type == "MIDDLEMOUSE" else self.mmbDown
         enteringMouseMode = (self.lmbDown or self.rmbDown or self.mmbDown) and not self.isInMouseMode
         leavingMouseMode = self.isInMouseMode and not (self.lmbDown or self.rmbDown or self.mmbDown)
         self.isInMouseMode = self.lmbDown or self.rmbDown or self.mmbDown
@@ -376,6 +375,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.wasdCurSpeed = self.prefs.wasdTopSpeed
 
     def exitMouseMode(self, context: bpy.types.Context):
+        self.isInMouseMode = False
         self.centerMouse(context)
         context.window.cursor_set("DEFAULT")
         context.area.tag_redraw()
