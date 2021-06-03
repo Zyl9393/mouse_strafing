@@ -328,7 +328,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             castLength = (minCast - castStart).dot(castDir) if invert else (maxCast - minCast).dot(castDir)
             if not invert and castLength <= 0:
                 break
-            hit = context.scene.ray_cast(context.window.view_layer, castStart, castDir, distance = castLength)
+            hit = context.scene.ray_cast(context.window.view_layer.depsgraph, castStart, castDir, distance = castLength)
             if not hit[0]:
                 break
             hitBackface = Vector(hit[2]).dot(viewDir) > 0
