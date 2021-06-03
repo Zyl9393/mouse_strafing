@@ -403,10 +403,11 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
 
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
-        delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
-        offset = Vector((-clamp(delta[0]*0.5, -context.region.width // 2, context.region.width // 2), \
-            -clamp(delta[1]*0.5, -context.region.height // 2, context.region.height // 2)))
-        context.window.cursor_warp(context.region.x + context.region.width // 2 + offset[0], context.region.y + context.region.height // 2 + offset[1])
+        if not (event.mouse_x < context.region.x + context.region.width // 3 or event.mouse_x > context.region.x + 2 * context.region.width // 3 \
+                or event.mouse_y < context.region.y + context.region.height // 3 or event.mouse_y > context.region.y + 2 * context.region.height // 3):
+            self.warpDelta = None
+            return
+        context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
 
 def clamp(x, min, max):
     return min if x < min else (max if x > max else x)
