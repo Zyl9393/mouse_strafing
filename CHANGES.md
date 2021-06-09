@@ -1,8 +1,9 @@
 # 2.1 (2021-06-03)
 * Change compatible Blender version to 2.92.0.
 * Update ray casting to work with Blender 2.91 and later.
+* Removed some confusing, needlessly complicated settings.
 * Fix occasional sudden jerky mouse movement.
-* Removed confusing settings: highly configurable mouse acceleration was faulty because Blender batches mouse movement events anyway.
+* Fixed stuttery movement caused by missing `INBETWEEN_MOUSEMOVE` events.
 
 # 2.0 (2020-12-22)
 * Pressing C to adjust pivot distance now ignores backfaces when backface culling is enabled in viewport settings.

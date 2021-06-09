@@ -51,8 +51,8 @@ def getDynamicSensitivity(delta: Vector, prefs: MouseStrafingPreferences) -> flo
     # Any mouse acceleration based on these events must have limited effect, or it will cause problems whenever framerate is low.
 
     minDynamicSensitivity = 0.5
-    minPrecisionWidth = 0.2
-    dynamicSensitivityTop = 15.0
+    minPrecisionWidth = 0.1
+    dynamicSensitivityTop = 30.0
 
     dots = math.sqrt(delta[0]*delta[0] + delta[1]*delta[1])
 
@@ -72,8 +72,8 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_label = "Mouse Strafing"
     bl_options = { "BLOCKING" }
 
-    mouseSanityMultiplierPan = 0.005
-    mouseSanityMultiplierStrafe = 0.05
+    mouseSanityMultiplierPan = 0.0025
+    mouseSanityMultiplierStrafe = 0.025
 
     wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
     inFast, inSlowStrafe, inSlowPan = False, False, False
@@ -135,10 +135,9 @@ class MouseStrafingOperator(bpy.types.Operator):
             return self.considerExitOperator(context)
         elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
             return self.updateMode(context, event)
-        elif event.type == "MOUSEMOVE":
+        elif event.type in [ "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" ]:
             if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
                 return {"RUNNING_MODAL"}
-            self.resetMouse(context, event)
             if self.lmbDown and not self.rmbDown:
                 self.performMouseAction(context, event, self.prefs.lmbAction)
             elif not self.lmbDown and self.rmbDown:
@@ -147,6 +146,8 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.performMouseAction(context, event, self.prefs.bmbAction)
             elif self.mmbDown:
                 self.performMouseAction(context, event, self.prefs.mmbAction)
+            self.resetMouse(context, event)
+            context.area.tag_redraw()
             return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             sv3d, rv3d = getViews3D(context)
@@ -161,10 +162,11 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type in self.wasdKeys:
             if self.stopSignal is None:
                 self.stopSignal = [False]
-                pinnedStopSignal = self.stopSignal
                 pinnedSv3d, pinnedRv3d = getViews3D(context)
+                pinnedStopSignal = self.stopSignal
                 bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
-            return self.updateKeys(context, event)
+            self.updateKeys(context, event)
+            return {"RUNNING_MODAL"}
         elif event.type == "C":
             self.cDown = event.value == "PRESS" if event.type == "C" else self.cDown
             if event.value == "PRESS":
@@ -235,7 +237,6 @@ class MouseStrafingOperator(bpy.types.Operator):
         if not wasWasding and self.isWasding:
             self.wasdStartTime = time.perf_counter()
             self.wasdPreviousTime = self.wasdStartTime
-        return {"RUNNING_MODAL"}
 
     def performMouseAction(self, context: bpy.types.Context, event: bpy.types.Event, action):
         delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
@@ -386,7 +387,6 @@ class MouseStrafingOperator(bpy.types.Operator):
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
         if not (event.mouse_x < context.region.x + context.region.width // 3 or event.mouse_x > context.region.x + 2 * context.region.width // 3 \
                 or event.mouse_y < context.region.y + context.region.height // 3 or event.mouse_y > context.region.y + 2 * context.region.height // 3):
-            self.warpDelta = None
             return
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
 
@@ -493,7 +493,7 @@ def fpsMove(op: MouseStrafingOperator, sv3d: bpy.types.SpaceView3D, rv3d: bpy.ty
     if op.dDown: op.move3dView(sv3d, rv3d, Vector((delta, 0, 0)), Vector((0, 0, 0)))
     if op.qDown: op.move3dView(sv3d, rv3d, Vector((0, -delta, 0)), Vector((0, 0, 0)))
     if op.eDown: op.move3dView(sv3d, rv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
-    return 0.001
+    return 0.0001
 
 def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
     if context.area != op.area:
