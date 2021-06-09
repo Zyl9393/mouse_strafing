@@ -46,24 +46,6 @@ def signExp(base, exponent) -> float:
     s = math.pow(v, exponent)
     return s if base > 0 else -s
 
-def getDynamicSensitivity(delta: Vector, prefs: MouseStrafingPreferences) -> float:
-    # Blender turns many OS-level mouse movement event into few addon-level mouse movement events.
-    # Any mouse acceleration based on these events must have limited effect, or it will cause problems whenever framerate is low.
-
-    minDynamicSensitivity = 0.5
-    minPrecisionWidth = 0.1
-    dynamicSensitivityTop = 30.0
-
-    dots = math.sqrt(delta[0]*delta[0] + delta[1]*delta[1])
-
-    if dots >= dynamicSensitivityTop:
-        return 1.0
-    elif dots <= (minPrecisionWidth * dynamicSensitivityTop):
-        return minDynamicSensitivity
-    else:
-        s = (1 - minDynamicSensitivity) / (dynamicSensitivityTop - (dynamicSensitivityTop * minPrecisionWidth))
-        return minDynamicSensitivity + s * (dots - (dynamicSensitivityTop * minPrecisionWidth))
-
 running = False
 
 class MouseStrafingOperator(bpy.types.Operator):
@@ -242,19 +224,16 @@ class MouseStrafingOperator(bpy.types.Operator):
         delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
         modPan = self.modScalePan()
         modStrafe = self.modScaleStrafe()
-        dynamicSensitivity = getDynamicSensitivity(delta, self.prefs)
 
-        processedPanDelta = delta * dynamicSensitivity
-        # Panning feels more sensitive during WASD movement.
-        panDelta = processedPanDelta * self.mouseSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.75) if self.isWasding else self.prefs.sensitivityPan) * modPan
-        panDeltaRappel = 0.75 * panDelta
+        # Panning feels more sensitive during WASD movement as well as rappel movement.
+        panDelta = delta * self.mouseSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.85) if self.isWasding else self.prefs.sensitivityPan) * modPan
+        panDeltaRappel = 0.8 * panDelta
 
         # It is easier to make larger mouse movements sideways than back and forth. That is useful for panning the view, because there generally
         # is a greater need to turn left/right than up/down. For strafing, forwards/backwards should not be more physically taxing than sideways movement.
         # By doing the following, we give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics.
         deltaStrafe = Vector((delta[0], delta[1]*1.2))
-        processedStrafeDelta = deltaStrafe * dynamicSensitivity
-        strafeDelta = processedStrafeDelta * self.mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * modStrafe
+        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * modStrafe
 
         sv3d, rv3d = getViews3D(context)
         if action == "turnXY":
