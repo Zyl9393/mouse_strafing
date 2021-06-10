@@ -54,8 +54,8 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_label = "Mouse Strafing"
     bl_options = { "BLOCKING" }
 
-    mouseSanityMultiplierPan = 0.0025
-    mouseSanityMultiplierStrafe = 0.025
+    mouseSanityMultiplierPan = 0.003
+    mouseSanityMultiplierStrafe = 0.02
 
     wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
     inFast, inSlowStrafe, inSlowPan = False, False, False
