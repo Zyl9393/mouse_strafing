@@ -95,6 +95,8 @@ class MouseStrafingOperator(bpy.types.Operator):
     area = None
     region = None
     drawCallbackHandle = None
+
+    ignoreMouseEvents = 0
     
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
@@ -139,7 +141,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
             return self.updateMode(context, event)
         elif event.type in [ "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" ]:
-            if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
+            if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y) or self.ignoreMouseEvents > 0:
+                self.ignoreMouseEvents = self.ignoreMouseEvents - 1
                 return {"RUNNING_MODAL"}
             if self.lmbDown and not self.rmbDown:
                 self.performMouseAction(context, event, self.prefs.lmbAction)
@@ -385,9 +388,9 @@ class MouseStrafingOperator(bpy.types.Operator):
     def wasdAccelerate(self):
         if self.wasdCurSpeed < self.prefs.wasdTopSpeed and self.prefs.wasdTime > 0.0005:
             self.wasdCurSpeed = self.prefs.wasdTopSpeed * ((time.perf_counter() - self.wasdStartTime) / self.prefs.wasdTime)
+            if self.wasdCurSpeed > self.prefs.wasdTopSpeed:
+                self.wasdCurSpeed = self.prefs.wasdTopSpeed
         else:
-            self.wasdCurSpeed = self.prefs.wasdTopSpeed
-        if self.wasdCurSpeed > self.prefs.wasdTopSpeed:
             self.wasdCurSpeed = self.prefs.wasdTopSpeed
 
     def exitMouseMode(self, context: bpy.types.Context):
@@ -417,6 +420,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def centerMouse(self, context: bpy.types.Context):
         context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
+        self.ignoreMouseEvents = 1
 
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
         if not (event.mouse_x < context.region.x + context.region.width // 3 or event.mouse_x > context.region.x + 2 * context.region.width // 3 \
