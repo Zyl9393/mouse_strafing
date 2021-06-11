@@ -21,7 +21,6 @@ def unregister():
 def register():
     bpy.utils.register_class(mouse_strafing.CameraState)
     bpy.utils.register_class(mouse_strafing.CameraStates)
-    bpy.types.Scene.mstrf_camera_save_states = bpy.props.PointerProperty(type = mouse_strafing.CameraStates, options = {"HIDDEN"})
     bpy.utils.register_class(mouse_strafing.MouseStrafingOperator)
     bpy.utils.register_class(prefs.MouseStrafingPreferences)
     mouse_strafing.register_keymaps()

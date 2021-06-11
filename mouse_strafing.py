@@ -101,7 +101,6 @@ class MouseStrafingOperator(bpy.types.Operator):
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
         if not running and event.value == "PRESS":
-            self.initSaveStates(context)
             self.area = context.area
             _sv3d, self.region = getViews3D(context)
             self.considerCenterCameraView(context)
@@ -115,6 +114,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         return {"PASS_THROUGH"}
 
     def initSaveStates(self, context: bpy.types.Context):
+        if not hasattr(bpy.types.Scene, "mstrf_camera_save_states"):
+            bpy.types.Scene.mstrf_camera_save_states = bpy.props.PointerProperty(type = CameraStates, options = {"HIDDEN"})
         states = context.scene.mstrf_camera_save_states
         while len(states.savedStates) < 10:
             states.savedStates.add()
@@ -244,6 +245,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.wasdPreviousTime = self.wasdStartTime
 
     def processSaveState(self, saveStateSlot, context: bpy.types.Context):
+        self.initSaveStates(context)
         now = time.perf_counter()
         states: CameraStates = context.scene.mstrf_camera_save_states
         if states.imminentSlot == saveStateSlot and self.imminentSaveStateTime > now - 1.0:
