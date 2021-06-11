@@ -48,6 +48,18 @@ def signExp(base, exponent) -> float:
 
 running = False
 
+class CameraState(bpy.types.PropertyGroup):
+    viewPos: bpy.props.FloatVectorProperty(size = 3, options = {"HIDDEN"})
+    rot: bpy.props.FloatVectorProperty(size = 4, options = {"HIDDEN"})
+    viewDist: bpy.props.FloatProperty(options = {"HIDDEN"})
+    lens: bpy.props.FloatProperty(options = {"HIDDEN"})
+
+class CameraStates(bpy.types.PropertyGroup):
+    savedStates: bpy.props.CollectionProperty(type = CameraState, options = {"HIDDEN"})
+    usedStates: bpy.props.BoolVectorProperty(size = 10, default = (False, False, False, False, False, False, False, False, False, False), options = {"HIDDEN"})
+    imminentState: bpy.props.PointerProperty(type = CameraState, options = {"HIDDEN"})
+    imminentSlot: bpy.props.IntProperty(options = {"HIDDEN"}, default = -1)
+
 class MouseStrafingOperator(bpy.types.Operator):
     """Strafe in the 3D View using the mouse."""
     bl_idname = "view_3d.mouse_strafing"
@@ -73,6 +85,9 @@ class MouseStrafingOperator(bpy.types.Operator):
     wasdCurSpeed = 0.0
     stopSignal = None
 
+    imminentSaveStateTime = -9999
+    keySaveStateDown = False
+
     keyDownRelocatePivot = False
     adjustPivotSuccess = False
     
@@ -84,6 +99,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
         if not running and event.value == "PRESS":
+            self.initSaveStates(context)
             self.area = context.area
             _sv3d, self.region = getViews3D(context)
             self.considerCenterCameraView(context)
@@ -95,6 +111,11 @@ class MouseStrafingOperator(bpy.types.Operator):
             context.area.tag_redraw()
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
+
+    def initSaveStates(self, context: bpy.types.Context):
+        states = context.scene.mstrf_camera_save_states
+        while len(states.savedStates) < 10:
+            states.savedStates.add()
 
     def considerCenterCameraView(self, context: bpy.types.Context):
         sv3d, rv3d = getViews3D(context)
@@ -129,7 +150,6 @@ class MouseStrafingOperator(bpy.types.Operator):
             elif self.mmbDown:
                 self.performMouseAction(context, event, self.prefs.mmbAction)
             self.resetMouse(context, event)
-            context.area.tag_redraw()
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             sv3d, rv3d = getViews3D(context)
             if self.prefs.wheelMoveFunction == "moveZ":
@@ -146,15 +166,20 @@ class MouseStrafingOperator(bpy.types.Operator):
                 pinnedStopSignal = self.stopSignal
                 bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
             self.updateKeys(context, event)
+        elif event.type in ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"]:
+            self.keySaveStateDown = event.value == "PRESS"
+            if event.value == "PRESS":
+                self.processSaveState(parseDigitString(event.type), context)
         elif event.type == self.prefs.keyRelocatePivot:
             self.keyDownRelocatePivot = event.value == "PRESS" if event.type == self.prefs.keyRelocatePivot else self.keyDownRelocatePivot
             if event.value == "PRESS" and not self.prefs.adjustPivot:
                 self.adjustPivot(context)
-            context.area.tag_redraw()
         elif event.type == self.prefs.keyResetRoll:
             if event.value == "PRESS":
                 self.resetRoll(context)
-            context.area.tag_redraw()
+        else:
+            return {"RUNNING_MODAL"}
+        context.area.tag_redraw()
         return {"RUNNING_MODAL"}
 
     def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, up: bool):
@@ -214,6 +239,41 @@ class MouseStrafingOperator(bpy.types.Operator):
         if not wasWasding and self.isWasding:
             self.wasdStartTime = time.perf_counter()
             self.wasdPreviousTime = self.wasdStartTime
+
+    def processSaveState(self, saveStateSlot, context: bpy.types.Context):
+        now = time.perf_counter()
+        states: CameraStates = context.scene.mstrf_camera_save_states
+        if states.imminentSlot == saveStateSlot and self.imminentSaveStateTime > now - 1.0:
+            if not states.usedStates[saveStateSlot]:
+                self.saveCameraState(states, saveStateSlot, states.imminentState)
+            self.applyCameraState(context, states.savedStates[saveStateSlot])
+            states.imminentSlot = -1
+        else:
+            if states.imminentSlot >= 0:
+                self.saveCameraState(states, states.imminentSlot, states.imminentState)
+            sv3d, rv3d = getViews3D(context)
+            viewPos, rot, _viewDir = prepareCameraTransformation(sv3d, rv3d)
+            states.imminentState.viewPos = viewPos
+            states.imminentState.rot = rot
+            states.imminentState.viewDist = rv3d.view_distance
+            states.imminentState.lens = sv3d.lens
+            states.imminentSlot = saveStateSlot
+            self.imminentSaveStateTime = now
+
+    def saveCameraState(self, states: CameraStates, slot, state: CameraState):
+        states.usedStates[slot] = True
+        states.savedStates[slot].viewPos = state.viewPos
+        states.savedStates[slot].rot = state.rot
+        states.savedStates[slot].viewDist = state.viewDist
+        states.savedStates[slot].lens = state.lens
+
+    def applyCameraState(self, context:bpy.types.Context, cameraState: CameraState):
+        sv3d, rv3d = getViews3D(context)
+        rv3d.view_distance = cameraState.viewDist
+        sv3d.lens = cameraState.lens
+        vP = cameraState.viewPos
+        r = cameraState.rot
+        applyCameraTranformation(sv3d, rv3d, Vector((vP[0], vP[1], vP[2])), Quaternion((r[0], r[1], r[2], r[3])))
 
     def performMouseAction(self, context: bpy.types.Context, event: bpy.types.Event, action):
         delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
@@ -485,16 +545,33 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         color = (0.75, 0.75, 0.75, 1)
         if op.keyDownRelocatePivot:
             if op.prefs.adjustPivot:
-                color = (1, 1, 0.01, 1)
+                color = (1, 1, 0.05, 1)
             elif op.adjustPivotSuccess:
                 color = (0.1, 1, 0.05, 1)
             else:
                 color = (1, 0.1, 0.05, 1)
+        elif op.keySaveStateDown:
+            color = (1, 0.05, 1, 1)
         elif op.isInMouseMode:
             color = (1, 1, 1, 1)
         blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")
+
+def parseDigitString(s):
+    options = { \
+        "ZERO":  0, \
+        "ONE":   1, \
+        "TWO":   2, \
+        "THREE": 3, \
+        "FOUR":  4, \
+        "FIVE":  5, \
+        "SIX":   6, \
+        "SEVEN": 7, \
+        "EIGHT": 8, \
+        "NINE":  9, \
+    }
+    return options[s]
 
 km = None
 kmi = None

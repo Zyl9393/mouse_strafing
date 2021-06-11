@@ -41,3 +41,6 @@ Use the scroll wheel to change the field of view or move a set distance. (See pr
 
 ## Speed adjustment
 Hold the Shift key to go 5 times faster. Hold the Ctrl key to go 5 times slower. For panning, you can reduce the speed by pressing Alt. Hold Ctrl and Alt at the same time to go at only 2% speed.
+
+## Save states
+While holding the spacebar, tap one of the number keys (0-9) to save current view to that number. Tap a number twice (within 1 second) to instead load its last saved view.

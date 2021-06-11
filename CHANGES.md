@@ -6,6 +6,7 @@
 * Fixed stuttery movement caused by missing `INBETWEEN_MOUSEMOVE` events.
 * Fix unrelated key-presses passing through.
 * Added option to customize keys for resetting roll and relocating pivot.
+* Added save states. (See README)
 * Crosshair now draws in yellow when trying to manually relocate pivot while automatic pivot relocation is enabled.
 
 # 2.0 (2020-12-22)
