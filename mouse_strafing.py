@@ -87,6 +87,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     imminentSaveStateTime = -9999
     keySaveStateDown = False
+    keySaveStateSlotDown = [False, False, False, False, False, False, False, False, False, False]
 
     keyDownRelocatePivot = False
     adjustPivotSuccess = False
@@ -172,8 +173,12 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.updateKeys(context, event)
         elif event.type in ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"]:
             self.keySaveStateDown = event.value == "PRESS"
-            if event.value == "PRESS":
-                self.processSaveState(parseDigitString(event.type), context)
+            slotIndex = parseDigitString(event.type)
+            if self.keySaveStateDown and self.keySaveStateSlotDown[slotIndex]:
+                return {"RUNNING_MODAL"}
+            self.keySaveStateSlotDown[slotIndex] = self.keySaveStateDown
+            if self.keySaveStateDown:
+                self.processSaveState(slotIndex, context)
         elif event.type == self.prefs.keyRelocatePivot:
             self.keyDownRelocatePivot = event.value == "PRESS" if event.type == self.prefs.keyRelocatePivot else self.keyDownRelocatePivot
             if event.value == "PRESS" and not self.prefs.adjustPivot:
