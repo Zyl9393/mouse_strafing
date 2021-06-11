@@ -73,7 +73,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     wasdCurSpeed = 0.0
     stopSignal = None
 
-    cDown = False
+    keyDownRelocatePivot = False
     adjustPivotSuccess = False
     
     prefs: MouseStrafingPreferences = None
@@ -130,7 +130,6 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.performMouseAction(context, event, self.prefs.mmbAction)
             self.resetMouse(context, event)
             context.area.tag_redraw()
-            return {"RUNNING_MODAL"}
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             sv3d, rv3d = getViews3D(context)
             if self.prefs.wheelMoveFunction == "moveZ":
@@ -140,7 +139,6 @@ class MouseStrafingOperator(bpy.types.Operator):
                     Vector((0, 0, 0)))
             elif self.prefs.wheelMoveFunction == "changeFOV":
                 self.nudgeFov(sv3d, rv3d, (True if event.type == "WHEELUPMOUSE" else False) != self.prefs.invertMouse)
-            return {"RUNNING_MODAL"}
         elif event.type in self.wasdKeys:
             if self.stopSignal is None:
                 self.stopSignal = [False]
@@ -148,19 +146,16 @@ class MouseStrafingOperator(bpy.types.Operator):
                 pinnedStopSignal = self.stopSignal
                 bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
             self.updateKeys(context, event)
-            return {"RUNNING_MODAL"}
-        elif event.type == "C":
-            self.cDown = event.value == "PRESS" if event.type == "C" else self.cDown
-            if event.value == "PRESS":
+        elif event.type == self.prefs.keyRelocatePivot:
+            self.keyDownRelocatePivot = event.value == "PRESS" if event.type == self.prefs.keyRelocatePivot else self.keyDownRelocatePivot
+            if event.value == "PRESS" and not self.prefs.adjustPivot:
                 self.adjustPivot(context)
             context.area.tag_redraw()
-            return {"RUNNING_MODAL"}
-        elif event.type == "R":
+        elif event.type == self.prefs.keyResetRoll:
             if event.value == "PRESS":
                 self.resetRoll(context)
             context.area.tag_redraw()
-            return {"RUNNING_MODAL"}
-        return {"PASS_THROUGH"}
+        return {"RUNNING_MODAL"}
 
     def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, up: bool):
         if rv3d.view_perspective == "CAMERA":
@@ -487,8 +482,16 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         blf.color(fontId, 0, 0, 0, 0.8)
         blf.position(fontId, x, y, 0)
         blf.draw(fontId, "+")
-        color = ((0.1, 1, 0.05, 1) if op.adjustPivotSuccess else (1, 0.1, 0.05, 1)) if op.cDown else \
-            (1, 1, 1, 1) if op.isInMouseMode else (0.75, 0.75, 0.75, 1)
+        color = (0.75, 0.75, 0.75, 1)
+        if op.keyDownRelocatePivot:
+            if op.prefs.adjustPivot:
+                color = (1, 1, 0.01, 1)
+            elif op.adjustPivotSuccess:
+                color = (0.1, 1, 0.05, 1)
+            else:
+                color = (1, 0.1, 0.05, 1)
+        elif op.isInMouseMode:
+            color = (1, 1, 1, 1)
         blf.color(fontId, *color)
         blf.position(fontId, x, y+1, 0)
         blf.draw(fontId, "+")
@@ -502,9 +505,7 @@ def register_keymaps():
     wm = bpy.context.window_manager
     kc = wm.keyconfigs.addon
     if kc:
-        km = kc.keymaps.find(name = "3D View", space_type = "VIEW_3D", region_type = "WINDOW")
-        if km is None:
-            km = kc.keymaps.new(name = "3D View", space_type = "VIEW_3D", region_type = "WINDOW", modal=False)
+        km = kc.keymaps.new(name = "3D View", space_type = "VIEW_3D", region_type = "WINDOW", modal=False)
         kmi = km.keymap_items.new(MouseStrafingOperator.bl_idname, "SPACE", "PRESS", head=True)
 
 def unregister_keymaps():

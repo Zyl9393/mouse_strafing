@@ -4,6 +4,9 @@
 * Removed some confusing, needlessly complicated settings.
 * Fix occasional sudden jerky mouse movement.
 * Fixed stuttery movement caused by missing `INBETWEEN_MOUSEMOVE` events.
+* Fix unrelated key-presses passing through.
+* Added option to customize keys for resetting roll and relocating pivot.
+* Crosshair now draws in yellow when trying to manually relocate pivot while automatic pivot relocation is enabled.
 
 # 2.0 (2020-12-22)
 * Pressing C to adjust pivot distance now ignores backfaces when backface culling is enabled in viewport settings.
