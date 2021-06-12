@@ -1,4 +1,4 @@
-# 2.1 (2021-06-03)
+# 2.1 (2021-06-12)
 * Changed compatible Blender version to 2.92.0.
 * Updated ray casting to work with Blender 2.91 and later.
 * Removed some confusing, needlessly complicated settings.
