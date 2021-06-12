@@ -8,6 +8,7 @@
 * Added option to customize keys.
 * Added save states. (See README)
 * Crosshair now draws in yellow when trying to manually relocate pivot while automatic pivot relocation is enabled.
+* Holding relocate pivot key for one second now toggles automatic pivot relocation.
 
 # 2.0 (2020-12-22)
 * Pressing C to adjust pivot distance now ignores backfaces when backface culling is enabled in viewport settings.

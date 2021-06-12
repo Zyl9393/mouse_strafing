@@ -49,7 +49,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     keyUp: bpy.props.StringProperty(name = "Move Up", description = "Press this key to strafe the camera upwards (must be upper-case)", default = "E")
     keyDown: bpy.props.StringProperty(name = "Move Down", description = "Press this key to strafe the camera downwards (must be upper-case)", default = "Q")
 
-    keyRelocatePivot: bpy.props.StringProperty(name = "Relocate Pivot", description = "Press this key to relocate camera pivot to the nearest surface in the center of the view", default = "C")
+    keyRelocatePivot: bpy.props.StringProperty(name = "Relocate Pivot", description = "Press this key to relocate camera pivot to the nearest surface in the center of the view. You can also hold it for one second to toggle Automatically Relocate Pivot on and off", default = "C")
     keyResetRoll: bpy.props.StringProperty(name = "Reset Roll", description = "Press this key to reset camera roll", default = "R")
 
     def draw(self, context: bpy.types.Context):
