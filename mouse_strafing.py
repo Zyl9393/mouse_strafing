@@ -69,7 +69,6 @@ class MouseStrafingOperator(bpy.types.Operator):
     mouseSanityMultiplierPan = 0.003
     mouseSanityMultiplierStrafe = 0.02
 
-    wasdKeys = [ "W", "A", "S", "D", "Q", "E" ]
     inFast, inSlowStrafe, inSlowPan = False, False, False
 
     lmbDown, rmbDown, mmbDown = False, False, False
@@ -78,7 +77,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     modeKeyPresses = 0
     inEscape = False
 
-    wDown, aDown, sDown, dDown, qDown, eDown = False, False, False, False, False, False
+    keyDownForward, keyDownLeft, keyDownBackward, keyDownRight, keyDownDown, keyDownUp = False, False, False, False, False, False
     isWasding = False
     wasdStartTime = time.perf_counter()
     wasdPreviousTime = time.perf_counter()
@@ -164,7 +163,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                     Vector((0, 0, 0)))
             elif self.prefs.wheelMoveFunction == "changeFOV":
                 self.nudgeFov(sv3d, rv3d, (True if event.type == "WHEELUPMOUSE" else False) != self.prefs.invertMouse)
-        elif event.type in self.wasdKeys:
+        elif event.type in [self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp]:
             if self.stopSignal is None:
                 self.stopSignal = [False]
                 pinnedSv3d, pinnedRv3d = getViews3D(context)
@@ -236,13 +235,13 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def updateKeys(self, context: bpy.types.Context, event: bpy.types.Event):
         wasWasding = self.isWasding
-        self.wDown = event.value == "PRESS" if event.type == "W" else self.wDown
-        self.aDown = event.value == "PRESS" if event.type == "A" else self.aDown
-        self.sDown = event.value == "PRESS" if event.type == "S" else self.sDown
-        self.dDown = event.value == "PRESS" if event.type == "D" else self.dDown
-        self.qDown = event.value == "PRESS" if event.type == "Q" else self.qDown
-        self.eDown = event.value == "PRESS" if event.type == "E" else self.eDown
-        self.isWasding = self.wDown or self.aDown or self.sDown or self.dDown or self.qDown or self.eDown
+        self.keyDownForward = event.value == "PRESS" if event.type == self.prefs.keyForward else self.keyDownForward
+        self.keyDownLeft = event.value == "PRESS" if event.type == self.prefs.keyLeft else self.keyDownLeft
+        self.keyDownBackward = event.value == "PRESS" if event.type == self.prefs.keyBackward else self.keyDownBackward
+        self.keyDownRight = event.value == "PRESS" if event.type == self.prefs.keyRight else self.keyDownRight
+        self.keyDownDown = event.value == "PRESS" if event.type == self.prefs.keyDown else self.keyDownDown
+        self.keyDownUp = event.value == "PRESS" if event.type == self.prefs.keyUp else self.keyDownUp
+        self.isWasding = self.keyDownForward or self.keyDownLeft or self.keyDownBackward or self.keyDownRight or self.keyDownDown or self.keyDownUp
         if not wasWasding or not self.isWasding:
             self.wasdCurSpeed = 0.0
         if not wasWasding and self.isWasding:
@@ -532,12 +531,12 @@ def fpsMove(op: MouseStrafingOperator, sv3d: bpy.types.SpaceView3D, rv3d: bpy.ty
     if not running or stopSignal[0]: return None
     if op.isWasding: op.wasdAccelerate()
     delta = op.wasdDelta()
-    if op.wDown: op.move3dView(sv3d, rv3d, Vector((0, 0, -delta)), Vector((0, 0, 0)))
-    if op.aDown: op.move3dView(sv3d, rv3d, Vector((-delta, 0, 0)), Vector((0, 0, 0)))
-    if op.sDown: op.move3dView(sv3d, rv3d, Vector((0, 0, delta)), Vector((0, 0, 0)))
-    if op.dDown: op.move3dView(sv3d, rv3d, Vector((delta, 0, 0)), Vector((0, 0, 0)))
-    if op.qDown: op.move3dView(sv3d, rv3d, Vector((0, -delta, 0)), Vector((0, 0, 0)))
-    if op.eDown: op.move3dView(sv3d, rv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
+    if op.keyDownForward: op.move3dView(sv3d, rv3d, Vector((0, 0, -delta)), Vector((0, 0, 0)))
+    if op.keyDownLeft: op.move3dView(sv3d, rv3d, Vector((-delta, 0, 0)), Vector((0, 0, 0)))
+    if op.keyDownBackward: op.move3dView(sv3d, rv3d, Vector((0, 0, delta)), Vector((0, 0, 0)))
+    if op.keyDownRight: op.move3dView(sv3d, rv3d, Vector((delta, 0, 0)), Vector((0, 0, 0)))
+    if op.keyDownDown: op.move3dView(sv3d, rv3d, Vector((0, -delta, 0)), Vector((0, 0, 0)))
+    if op.keyDownUp: op.move3dView(sv3d, rv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
     return 0.0001
 
 def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):

@@ -41,6 +41,13 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         default = 0.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
     toggleMode: bpy.props.BoolProperty(name = "Toggle strafe-mode instead of hold-to-strafe", description = "When checked, strafe-mode will only quit when pressing the key a second time or pressing Escape", default = False)
 
+    keyForward: bpy.props.StringProperty(name = "Move Forward", description = "Press this key to move the camera forward (must be upper-case)", default = "W")
+    keyBackward: bpy.props.StringProperty(name = "Move Backward", description = "Press this key to move the camera backward (must be upper-case)", default = "S")
+    keyLeft: bpy.props.StringProperty(name = "Move Left", description = "Press this key to strafe the camera to the left (must be upper-case)", default = "A")
+    keyRight: bpy.props.StringProperty(name = "Move Right", description = "Press this key to stafe the camera to the right (must be upper-case)", default = "D")
+    keyUp: bpy.props.StringProperty(name = "Move Up", description = "Press this key to strafe the camera upwards (must be upper-case)", default = "E")
+    keyDown: bpy.props.StringProperty(name = "Move Down", description = "Press this key to strafe the camera downwards (must be upper-case)", default = "Q")
+
     keyRelocatePivot: bpy.props.StringProperty(name = "Relocate Pivot", description = "Press this key to relocate camera pivot to the nearest surface in the center of the view", default = "C")
     keyResetRoll: bpy.props.StringProperty(name = "Reset Roll", description = "Press this key to reset camera roll", default = "R")
 
@@ -95,5 +102,11 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         layout.label(text = "Key Bindings:", translate = False)
 
         box = layout.box()
+        box.row().prop(self, "keyForward")
+        box.row().prop(self, "keyBackward")
+        box.row().prop(self, "keyLeft")
+        box.row().prop(self, "keyRight")
+        box.row().prop(self, "keyUp")
+        box.row().prop(self, "keyDown")
         box.row().prop(self, "keyRelocatePivot")
         box.row().prop(self, "keyResetRoll")
