@@ -1,10 +1,10 @@
 # 2.1 (2021-06-03)
-* Change compatible Blender version to 2.92.0.
-* Update ray casting to work with Blender 2.91 and later.
+* Changed compatible Blender version to 2.92.0.
+* Updated ray casting to work with Blender 2.91 and later.
 * Removed some confusing, needlessly complicated settings.
-* Fix occasional sudden jerky mouse movement.
+* Fixed occasional sudden jerky mouse movement. (Caused by Blender's `cursor_warp` glitch)
 * Fixed stuttery movement caused by missing `INBETWEEN_MOUSEMOVE` events.
-* Fix unrelated key-presses passing through.
+* Fixed unrelated key-presses passing through.
 * Added option to customize keys.
 * Added save states. (See README)
 * Crosshair now draws in yellow when trying to manually relocate pivot while automatic pivot relocation is enabled.

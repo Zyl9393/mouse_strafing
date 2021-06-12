@@ -96,6 +96,9 @@ class MouseStrafingOperator(bpy.types.Operator):
     region = None
     drawCallbackHandle = None
 
+    bewareWarpDist = None
+    previousDelta = None
+
     ignoreMouseEvents = 0
     
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
@@ -142,17 +145,27 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
             return self.updateMode(context, event)
         elif event.type in [ "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" ]:
-            if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y) or self.ignoreMouseEvents > 0:
+            if self.ignoreMouseEvents > 0:
                 self.ignoreMouseEvents = self.ignoreMouseEvents - 1
+                self.bewareWarpDist = None
+                return {"RUNNING_MODAL"}
+            delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
+            if self.bewareWarpDist is not None:
+                if delta.length > self.bewareWarpDist * 0.5 and delta.length > self.previousDelta.length * 2:
+                    if self.prefs.debug:
+                        print("mouse_strafing: detected cursor_warp glitch: using last mouse delta (" + str(self.previousDelta[0]) + ", " + str(self.previousDelta[1]) + ") instead of (" + str(delta[0]) + ", " + str(delta[1]) + ")")
+                    delta = self.previousDelta
+                self.bewareWarpDist = None
+            if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
                 return {"RUNNING_MODAL"}
             if self.lmbDown and not self.rmbDown:
-                self.performMouseAction(context, event, self.prefs.lmbAction)
+                self.performMouseAction(context, delta, self.prefs.lmbAction)
             elif not self.lmbDown and self.rmbDown:
-                self.performMouseAction(context, event, self.prefs.rmbAction)
+                self.performMouseAction(context, delta, self.prefs.rmbAction)
             elif self.lmbDown and self.rmbDown:
-                self.performMouseAction(context, event, self.prefs.bmbAction)
+                self.performMouseAction(context, delta, self.prefs.bmbAction)
             elif self.mmbDown:
-                self.performMouseAction(context, event, self.prefs.mmbAction)
+                self.performMouseAction(context, delta, self.prefs.mmbAction)
             self.resetMouse(context, event)
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             sv3d, rv3d = getViews3D(context)
@@ -284,8 +297,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         r = cameraState.rot
         applyCameraTranformation(sv3d, rv3d, Vector((vP[0], vP[1], vP[2])), Quaternion((r[0], r[1], r[2], r[3])))
 
-    def performMouseAction(self, context: bpy.types.Context, event: bpy.types.Event, action):
-        delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
+    def performMouseAction(self, context: bpy.types.Context, delta: Vector, action):
         modPan = self.modScalePan()
         modStrafe = self.modScaleStrafe()
 
@@ -429,10 +441,13 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.ignoreMouseEvents = 1
 
     def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
-        if not (event.mouse_x < context.region.x + context.region.width // 3 or event.mouse_x > context.region.x + 2 * context.region.width // 3 \
-                or event.mouse_y < context.region.y + context.region.height // 3 or event.mouse_y > context.region.y + 2 * context.region.height // 3):
+        if not (event.mouse_x < context.region.x + context.region.width // 4 or event.mouse_x > context.region.x + (3 * context.region.width) // 4 \
+                or event.mouse_y < context.region.y + context.region.height // 4 or event.mouse_y > context.region.y + (3 * context.region.height) // 4):
             return
-        context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
+        target = (context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
+        context.window.cursor_warp(target[0], target[1])
+        self.previousDelta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
+        self.bewareWarpDist = Vector((target[0] - event.mouse_x, target[1] - event.mouse_y)).length
 
 def clamp(x, min, max):
     return min if x < min else (max if x > max else x)

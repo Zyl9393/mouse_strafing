@@ -40,6 +40,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to the 3D View camera" , \
         default = 0.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
     toggleMode: bpy.props.BoolProperty(name = "Toggle strafe-mode instead of hold-to-strafe", description = "When checked, strafe-mode will only quit when pressing the key a second time or pressing Escape", default = False)
+    debug: bpy.props.BoolProperty(name = "Debug Mode", description = "When checked, print in the console when Blender's cursor_warp glitch is detected and countered", default = False)
 
     keyForward: bpy.props.StringProperty(name = "Move Forward", description = "Press this key to move the camera forward (must be upper-case)", default = "W")
     keyBackward: bpy.props.StringProperty(name = "Move Backward", description = "Press this key to move the camera backward (must be upper-case)", default = "S")
@@ -91,6 +92,9 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         row = box.row()
         row.prop(self, "toggleMode")
+
+        row = box.row()
+        row.prop(self, "debug")
 
         box = layout.box()
 
