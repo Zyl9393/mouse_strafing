@@ -1,10 +1,7 @@
 # Mouse Strafing
 Strafe in Blender's 3D View using the mouse, while holding down a key. Useful for navigating large scenes faster.
 
-## What does it look like?
-See [preview.webm](https://raw.githubusercontent.com/Zyl9393/mouse_strafing/master/preview.webm).
-
-Addon preferences:
+## Addon preferences:
 
 ![Addon preferences](prefs.png "Addon preferences")
 
