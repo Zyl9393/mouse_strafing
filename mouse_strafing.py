@@ -53,6 +53,7 @@ class CameraState(bpy.types.PropertyGroup):
     rot: bpy.props.FloatVectorProperty(size = 4, options = {"HIDDEN"})
     viewDist: bpy.props.FloatProperty(options = {"HIDDEN"})
     lens: bpy.props.FloatProperty(options = {"HIDDEN"})
+    isPerspective: bpy.props.BoolProperty(options = {"HIDDEN"})
 
 class CameraStates(bpy.types.PropertyGroup):
     savedStates: bpy.props.CollectionProperty(type = CameraState, options = {"HIDDEN"})
@@ -288,6 +289,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             states.imminentState.rot = rot
             states.imminentState.viewDist = rv3d.view_distance
             states.imminentState.lens = sv3d.lens
+            states.imminentState.isPerspective = rv3d.is_perspective
             states.imminentSlot = saveStateSlot
             self.imminentSaveStateTime = now
 
@@ -297,11 +299,15 @@ class MouseStrafingOperator(bpy.types.Operator):
         states.savedStates[slot].rot = state.rot
         states.savedStates[slot].viewDist = state.viewDist
         states.savedStates[slot].lens = state.lens
+        states.savedStates[slot].isPerspective = state.isPerspective
 
     def applyCameraState(self, context:bpy.types.Context, cameraState: CameraState):
         sv3d, rv3d = getViews3D(context)
+        if rv3d.is_perspective != cameraState.isPerspective:
+            bpy.ops.view3d.view_persportho()
         rv3d.view_distance = cameraState.viewDist
         sv3d.lens = cameraState.lens
+
         vP = cameraState.viewPos
         r = cameraState.rot
         applyCameraTranformation(sv3d, rv3d, Vector((vP[0], vP[1], vP[2])), Quaternion((r[0], r[1], r[2], r[3])))
