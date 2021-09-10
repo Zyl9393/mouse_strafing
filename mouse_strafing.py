@@ -328,9 +328,9 @@ class MouseStrafingOperator(bpy.types.Operator):
 
         sv3d, rv3d = getViews3D(context)
         if action == "turnXY":
-            self.pan3dView(sv3d, rv3d, Vector((panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[0])))
+            self.pan3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
         elif action == "roll":
-            self.roll3dView(sv3d, rv3d, Vector((panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
+            self.roll3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
         else:
             if action == "strafeXZ":
                 self.move3dView(sv3d, rv3d, Vector((strafeDelta[0], 0, -strafeDelta[1])), Vector((0, 0, 0)))

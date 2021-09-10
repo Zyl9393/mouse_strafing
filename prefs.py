@@ -8,7 +8,8 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Mouse multiplier when mouse strafing", \
         default = 1.0, min = 0.01, max = 100.0, soft_min = 0.1, soft_max = 10.0, step = 1, precision = 2)
 
-    invertMouse: bpy.props.BoolProperty(name = "Invert Mouse", description = "Invert effect of vertical mouse movement when looking around", default = True)
+    invertMouse: bpy.props.BoolProperty(name = "Invert Mouse Vertically", description = "Invert effect of vertical mouse movement when looking around", default = True)
+    invertMouseX: bpy.props.BoolProperty(name = "Invert Mouse Horizontally", description = "Invert effect of horizontal mouse movement when looking around", default = False)
 
     mouseButtonActionItems = [ \
         ("turnXY", "Look around", "Look around", "NONE", 0), \
@@ -65,6 +66,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         
         row = box.row()
         row.prop(self, "invertMouse")
+        row.prop(self, "invertMouseX")
 
         box = layout.box()
 

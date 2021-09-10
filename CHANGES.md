@@ -1,5 +1,7 @@
 # 2.2 (TBD)
 * Camera save states now also save and load 3D View projection mode (perspective/orthographic).
+* Fixed a typo which broke panning when the invert mouse option was disabled.
+* Added option to invert mouse horizontal movement.
 
 # 2.1 (2021-06-12)
 * Changed compatible Blender version to 2.92.0.
