@@ -63,7 +63,7 @@ class CameraStates(bpy.types.PropertyGroup):
 
 class MouseStrafingOperator(bpy.types.Operator):
     """Strafe in the 3D View using the mouse."""
-    bl_idname = "view_3d.mouse_strafing"
+    bl_idname = "view3d.mouse_strafing"
     bl_label = "Mouse Strafing"
     bl_options = { "BLOCKING" }
 
