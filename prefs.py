@@ -30,7 +30,9 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     mouseWheelActionItems = [\
         ("moveZ", "Move forward/backwards", "Move forward/backwards", "NONE", 0), \
-        ("changeFOV", "Change FOV", "Change Field Of View (FOV)", "NONE", 1)]
+        ("changeFOV", "Change Focal Length", "Change the field of view (FOV) by controlling the distance of the lens to the camera sensor", "NONE", 1), \
+        ("changeHFOV", "Change Horizontal FOV", "Change the field of view (FOV) by controlling the horizontal view angle", "NONE", 2), \
+        ("changeVFOV", "Change Vertical FOV", "Change the field of view (FOV) by controlling the vertical view angle", "NONE", 3)]
     wheelMoveFunction: bpy.props.EnumProperty(name = "Scroll Wheel Function", description = "Set what the scroll wheel does", items = mouseWheelActionItems, default = "changeFOV")
     wheelDistance: bpy.props.FloatProperty(name = "Wheel Distance", description = "Set move distance when using the scroll wheel to move", \
         default = 0.5, min = -1000.0, max = 1000.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)

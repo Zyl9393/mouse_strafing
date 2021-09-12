@@ -1,6 +1,9 @@
 # 2.2 (TBD)
 * Camera save states now also save and load 3D View projection mode (perspective/orthographic).
 * Fixed a typo which broke panning when the invert mouse option was disabled.
+* Changing view angle with the mouse wheel now displays change on screen for a moment.
+	* Allow to set aspect of view angle to control, i.e. horizontal view angle, vertical view angle or focal length.
+	* Works for cameras, too.
 * Added option to invert mouse horizontal movement.
 * Addon now correctly registers under `view3d` category of addons (instead of `view_3d`).
 

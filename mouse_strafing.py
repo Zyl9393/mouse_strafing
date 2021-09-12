@@ -70,7 +70,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     mouseSanityMultiplierPan = 0.003
     mouseSanityMultiplierStrafe = 0.02
 
-    inFast, inSlowStrafe, inSlowPan = False, False, False
+    increasedMagnitude, increasedPrecision, alternateControl = False, False, False
 
     lmbDown, rmbDown, mmbDown = False, False, False
     isInMouseMode = False
@@ -101,6 +101,12 @@ class MouseStrafingOperator(bpy.types.Operator):
     previousDelta = None
 
     ignoreMouseEvents = 0
+
+    fontId = 0
+    editFovTime = -9999
+
+    focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
+    fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), 179)
     
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
@@ -132,7 +138,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     def modal(self, context: bpy.types.Context, event: bpy.types.Event):
         if not running:
             return {"CANCELLED"}
-        self.inFast, self.inSlowStrafe, self.inSlowPan = event.shift, event.ctrl, event.alt
+        self.increasedMagnitude, self.increasedPrecision, self.alternateControl = event.shift, event.ctrl, event.alt
         if event.type == kmi.type:
             if event.value == "PRESS":
                 self.modeKeyPresses = self.modeKeyPresses + (0 if self.modeKeyDown else 1)
@@ -175,8 +181,8 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.move3dView(sv3d, rv3d, \
                     Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                     Vector((0, 0, 0)))
-            elif self.prefs.wheelMoveFunction == "changeFOV":
-                self.nudgeFov(sv3d, rv3d, (True if event.type == "WHEELUPMOUSE" else False) != self.prefs.invertMouse)
+            elif self.prefs.wheelMoveFunction in ["changeFOV", "changeHFOV", "changeVFOV"]:
+                self.nudgeFov(sv3d, rv3d, context, event.type != "WHEELUPMOUSE")
         elif event.type in [self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp]:
             if self.stopSignal is None:
                 self.stopSignal = [False]
@@ -213,29 +219,42 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.area.tag_redraw()
         return {"RUNNING_MODAL"}
 
-    def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, up: bool):
+    def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, context: bpy.types.Context, up: bool):
         if rv3d.view_perspective == "CAMERA":
             if sv3d.lock_camera and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
                 cam = bpy.types.Camera(sv3d.camera.data)
-                cam.lens = nudgeFovValue(cam.lens, up)
+                sensorSize = getSensorSize(context, cam)
+                cam.lens = self.nudgeLensValue(cam.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, up)
+                self.editFovTime = time.perf_counter() 
         else:
-            sv3d.lens = nudgeFovValue(sv3d.lens, up)
+            sensorSize = getSensorSizeView3d(context)
+            sv3d.lens = self.nudgeLensValue(sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, up)
+            self.editFovTime = time.perf_counter() 
+
+    def nudgeLensValue(self, lens: float, sensorWidth: float, sensorHeight: float, method: str, up: bool) -> float:
+        magnitude = 1 if up else -1
+        magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
+        if method == "changeHFOV":
+            return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorWidth), magnitude, self.increasedPrecision, self.fovRanges), sensorWidth)
+        elif method == "changeVFOV":
+            return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorHeight), magnitude, self.increasedPrecision, self.fovRanges), sensorHeight)
+        return nudgeValue(lens, magnitude, self.increasedPrecision, self.focalLengthRanges)
 
     def modScaleStrafe(self):
-        inFastStrafe, inSlowStrafe = self.inFast and (self.inFast != self.inSlowStrafe), self.inSlowStrafe and (self.inSlowStrafe != self.inFast)
+        inFastStrafe, inSlowStrafe = self.increasedMagnitude and (self.increasedMagnitude != self.increasedPrecision), self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
         if inFastStrafe:
             return 5
-        if inSlowStrafe and self.inSlowPan:
+        if inSlowStrafe and self.alternateControl:
             return 0.02
         if inSlowStrafe:
             return 0.2
-        if self.inSlowPan:
+        if self.alternateControl:
             return 0.5
         return 1
 
     def modScalePan(self):
-        inSlowStrafe = self.inSlowStrafe and (self.inSlowStrafe != self.inFast)
-        if self.inSlowPan:
+        inSlowStrafe = self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
+        if self.alternateControl:
             return 0.2
         if inSlowStrafe:
             return 0.5
@@ -467,34 +486,32 @@ class MouseStrafingOperator(bpy.types.Operator):
 def clamp(x, min, max):
     return min if x < min else (max if x > max else x)
 
-def clampLensValue(lensFunc):
-    def clampFunc(lens: float, up: bool):
-        return clamp(lensFunc(lens, up), 1.0, 250.0)
-    return clampFunc
+def magnitudeRepeat(nudgeFunc):
+    def repeatNudgeFunc(value: float, magnitude: int, fine: bool, ranges: list) -> float:
+        for i in range(0, -magnitude if magnitude < 0 else magnitude, 1):
+            value = nudgeFunc(value, 1 if magnitude >= 0 else -1, fine, ranges)
+        return value
+    return repeatNudgeFunc
 
-@clampLensValue
-def nudgeFovValue(lens: float, up: bool) -> float:
-    lens = round(lens * 8, 0) / 8.0
-    if up:
-        if lens >= 50:
-            return lens + 2
-        if lens >= 20:
-            return lens + 1
-        if lens >= 10:
-            return lens + 0.5
-        if lens >= 5:
-            return lens + 0.25
-        return lens + 0.125
-    else:
-        if lens > 50:
-            return lens - 2
-        if lens > 20:
-            return lens - 1
-        if lens > 10:
-            return lens - 0.5
-        if lens > 5:
-            return lens - 0.25
-        return lens - 0.125
+@magnitudeRepeat
+def nudgeValue(value: float, magnitude: int, fine: bool, ranges: list) -> float:
+    minimum = ranges[0][0]
+    maximum = ranges[len(ranges) - 1]
+    for i in range(len(ranges) - 2, -1, -1):
+        if value+0.00001 >= ranges[i][0]:
+            snappedValue = round(value, 3) if fine else round(value / ranges[i][1], 0) * ranges[i][1]
+            if (snappedValue > value + 0.00001 and magnitude >= 0) or snappedValue < value - 0.00001 and magnitude < 0:
+                return snappedValue
+            value = snappedValue + (magnitude * 0.001 if fine else (ranges[i][1] if magnitude >= 0 else -ranges[i][1]))
+            value = round(value, 3) if fine else round(value / ranges[i][1], 0) * ranges[i][1]
+            if not fine and i > 0 and magnitude < 0 and value+0.00001 < ranges[i][0]:
+                value = ranges[i][0] - ranges[i-1][1]
+            return value
+    if value-0.00001 <= minimum:
+        return minimum
+    if value+0.00001 >= maximum:
+        return maximum
+    return value
 
 def prepareCameraTransformation(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> (Vector, Quaternion, Vector):
     considerViewToCamera(sv3d, rv3d)
@@ -575,28 +592,117 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
     sv3d, rv3d = getViews3D(context)
     if rv3d != op.region:
         return
-    fontId = 0
-    blf.size(fontId, 20, 72)
-    if op.prefs.showCrosshair:
-        x, y = context.region.width // 2 - 8, context.region.height // 2 - 7
-        blf.color(fontId, 0, 0, 0, 0.8)
-        blf.position(fontId, x, y, 0)
-        blf.draw(fontId, "+")
-        color = (0.75, 0.75, 0.75, 1)
-        if op.keyDownRelocatePivot:
-            if op.prefs.adjustPivot:
-                color = (1, 1, 0.05, 1)
-            elif op.adjustPivotSuccess:
-                color = (0.1, 1, 0.05, 1)
-            else:
-                color = (1, 0.1, 0.05, 1)
-        elif op.keySaveStateDown:
-            color = (1, 0.05, 1, 1)
-        elif op.isInMouseMode:
-            color = (1, 1, 1, 1)
-        blf.color(fontId, *color)
-        blf.position(fontId, x, y+1, 0)
-        blf.draw(fontId, "+")
+    drawCrosshair(op, context, event)
+    drawFovInfo(op, context, event)
+
+def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
+    if not op.prefs.showCrosshair:
+        return
+    x, y = context.region.width // 2 - 8, context.region.height // 2 - 7
+    blf.size(op.fontId, 20, 72)
+    blf.color(op.fontId, 0, 0, 0, 0.8)
+    blf.position(op.fontId, x, y, 0)
+    blf.draw(op.fontId, "+")
+    color = (0.75, 0.75, 0.75, 1)
+    if op.keyDownRelocatePivot:
+        if op.prefs.adjustPivot:
+            color = (1, 1, 0.05, 1)
+        elif op.adjustPivotSuccess:
+            color = (0.1, 1, 0.05, 1)
+        else:
+            color = (1, 0.1, 0.05, 1)
+    elif op.keySaveStateDown:
+        color = (1, 0.05, 1, 1)
+    elif op.isInMouseMode:
+        color = (1, 1, 1, 1)
+    blf.color(op.fontId, *color)
+    blf.position(op.fontId, x, y+1, 0)
+    blf.draw(op.fontId, "+")
+
+def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
+    now = time.perf_counter()
+    holdTime = 1.0
+    fadeTime = 0.5
+    since = now - op.editFovTime
+    if since >= (holdTime + fadeTime):
+        return
+    alphaFactor = 1
+    if since > holdTime:
+        alphaFactor = 1 - (since - holdTime) / fadeTime
+    
+    focalLength, sensorSize, hFov, vFov = None, None, None, None
+    sv3d, rv3d = getViews3D(context)
+    isCameraData = False
+    if rv3d.view_perspective == "CAMERA" and sv3d.lock_camera and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
+        cam = bpy.types.Camera(sv3d.camera.data)
+        sensorSize = getSensorSize(context, cam)
+        focalLength = cam.lens
+        isCameraData = True
+    else:
+        sensorSize = getSensorSizeView3d(context)
+        focalLength = sv3d.lens
+    hFov = focalLengthToFov(focalLength, sensorSize[0])
+    vFov = focalLengthToFov(focalLength, sensorSize[1])
+
+    textLens = f"{focalLength: .3f}mm"
+    textHFov = f"{hFov: .3f}°"
+    textVFov = f"{vFov: .3f}°"
+
+    blf.enable(op.fontId, blf.SHADOW)
+    blf.shadow(op.fontId, 3, 0, 0, 0, alphaFactor)
+    blf.size(op.fontId, 20, 72)
+    x, y = context.region.width // 2, context.region.height // 2 - 7
+
+    b = 1 if op.prefs.wheelMoveFunction == "changeVFOV" else 0.75
+    blf.color(op.fontId, b, b, b, alphaFactor)
+    drawText(x + 55, y, textVFov)
+
+    b = 1 if op.prefs.wheelMoveFunction == "changeFOV" else 0.75
+    blf.color(op.fontId, b, b, b, alphaFactor)
+    drawText(x + 15, y - 25, textLens)
+
+    b = 1 if op.prefs.wheelMoveFunction == "changeHFOV" else 0.75
+    blf.color(op.fontId, b, b, b, alphaFactor)
+    drawText(x - 25, y - 50, textHFov)
+
+    if isCameraData:
+        blf.size(op.fontId, 12, 72)
+        blf.color(op.fontId, 1, 0.5, 0.1, alphaFactor)
+        drawText(x - 67, y - 80, "Showing Camera Values")
+
+    bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
+
+def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
+    sensorWidth = 36.0
+    aspect = context.region.width / context.region.height
+    if aspect < 1:
+        sensorWidth = sensorWidth * aspect
+    sensorHeight = sensorWidth / aspect
+    return (sensorWidth, sensorHeight)
+
+def getSensorSize(context: bpy.types.Context, cam: bpy.types.Camera) -> (float, float):
+    aspect = (context.scene.render.resolution_x / context.scene.render.pixel_aspect_y) / (context.scene.render.resolution_y / context.scene.render.pixel_aspect_x)
+    sensorWidth = cam.sensor_width
+    sensorHeight = cam.sensor_height
+    if cam.sensor_fit == "AUTO":
+        if aspect < 1:
+            sensorWidth = sensorWidth * aspect
+        sensorHeight = sensorWidth / aspect
+    elif cam.sensor_fit == "HORIZONTAL":
+        sensorHeight = sensorWidth / aspect
+    elif cam.sensor_fit == "VERTICAL":
+        sensorWidth = sensorHeight * aspect
+    return (sensorWidth, sensorHeight)
+
+def focalLengthToFov(focalLength: float, sensorSideLength: float) -> float:
+    return math.degrees(2 * math.atan(sensorSideLength / focalLength))
+
+def fovToFocalLength(fov: float, sensorSideLength: float) -> float:
+    return sensorSideLength / math.tan(math.radians(fov)/2)
+
+def drawText(x: int, y: int, text: str):
+    blf.position(0, x, y, 0)
+    blf.draw(0, text)
 
 def parseDigitString(s):
     options = { \
