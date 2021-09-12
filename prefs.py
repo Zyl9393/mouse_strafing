@@ -33,9 +33,10 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         ("changeFOV", "Change Focal Length", "Change the field of view (FOV) by controlling the distance of the lens to the camera sensor", "NONE", 1), \
         ("changeHFOV", "Change Horizontal FOV", "Change the field of view (FOV) by controlling the horizontal view angle", "NONE", 2), \
         ("changeVFOV", "Change Vertical FOV", "Change the field of view (FOV) by controlling the vertical view angle", "NONE", 3)]
-    wheelMoveFunction: bpy.props.EnumProperty(name = "Scroll Wheel Function", description = "Set what the scroll wheel does", items = mouseWheelActionItems, default = "changeFOV")
+    wheelMoveFunction: bpy.props.EnumProperty(name = "Wheel", description = "Set what the scroll wheel does", items = mouseWheelActionItems, default = "changeVFOV")
     wheelDistance: bpy.props.FloatProperty(name = "Wheel Distance", description = "Set move distance when using the scroll wheel to move", \
         default = 0.5, min = -1000.0, max = 1000.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)
+    scrollUpToZoomIn: bpy.props.BoolProperty(name = "Invert Direction", description = "When checked, inverts the scroll wheel direction such that scrolling up zooms in and scrolling down zooms out", default = False)
 
     showCrosshair: bpy.props.BoolProperty(name = "Show Crosshair", description = "Show crosshair during strafe actions", default = True)
     adjustPivot: bpy.props.BoolProperty(name = "Automatically Relocate Pivot", description = "Automatically relocate the 3D View's "
@@ -84,8 +85,9 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row.prop(self, "wheelMoveFunction")
 
         if prefs.wheelMoveFunction == "moveZ":
-            row = box.row()
             row.prop(self, "wheelDistance")
+        else:
+            row.prop(self, "scrollUpToZoomIn")
 
         row = box.row()
         row.prop(self, "adjustPivot")

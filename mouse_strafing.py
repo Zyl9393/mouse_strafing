@@ -182,7 +182,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                     Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                     Vector((0, 0, 0)))
             elif self.prefs.wheelMoveFunction in ["changeFOV", "changeHFOV", "changeVFOV"]:
-                self.nudgeFov(sv3d, rv3d, context, event.type != "WHEELUPMOUSE")
+                self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
         elif event.type in [self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp]:
             if self.stopSignal is None:
                 self.stopSignal = [False]
@@ -219,20 +219,21 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.area.tag_redraw()
         return {"RUNNING_MODAL"}
 
-    def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, context: bpy.types.Context, up: bool):
+    def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, context: bpy.types.Context, zoomOut: bool):
         if rv3d.view_perspective == "CAMERA":
             if sv3d.lock_camera and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
                 cam = bpy.types.Camera(sv3d.camera.data)
                 sensorSize = getSensorSize(context, cam)
-                cam.lens = self.nudgeLensValue(cam.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, up)
+                cam.lens = self.nudgeLensValue(cam.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, zoomOut)
                 self.editFovTime = time.perf_counter() 
         else:
             sensorSize = getSensorSizeView3d(context)
-            sv3d.lens = self.nudgeLensValue(sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, up)
-            self.editFovTime = time.perf_counter() 
+            sv3d.lens = self.nudgeLensValue(sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, zoomOut)
+            self.editFovTime = time.perf_counter()
 
     def nudgeLensValue(self, lens: float, sensorWidth: float, sensorHeight: float, method: str, up: bool) -> float:
         magnitude = 1 if up else -1
+        magnitude = -magnitude if method == "changeFOV" else magnitude
         magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
         if method == "changeHFOV":
             return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorWidth), magnitude, self.increasedPrecision, self.fovRanges), sensorWidth)
