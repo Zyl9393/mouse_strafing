@@ -106,7 +106,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     editFovTime = -9999
 
     focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
-    fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), 179)
+    fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), (130, 0.5), (160, 0.25), 179)
     
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
@@ -631,6 +631,7 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bp
     if since > holdTime:
         alphaFactor = 1 - (since - holdTime) / fadeTime
     
+    uiScale = context.preferences.system.ui_scale
     focalLength, sensorSize, hFov, vFov = None, None, None, None
     sv3d, rv3d = getViews3D(context)
     isCameraData = False
@@ -651,25 +652,25 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bp
 
     blf.enable(op.fontId, blf.SHADOW)
     blf.shadow(op.fontId, 3, 0, 0, 0, alphaFactor)
-    blf.size(op.fontId, 20, 72)
-    x, y = context.region.width // 2, context.region.height // 2 - 7
+    blf.size(op.fontId, int(20*uiScale), 72)
+    x, y = context.region.width // 2, context.region.height // 2 - int(7*uiScale)
 
     b = 1 if op.prefs.wheelMoveFunction == "changeVFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
-    drawText(x + 55, y, textVFov)
+    drawText(x + int(55*uiScale), y, textVFov)
 
     b = 1 if op.prefs.wheelMoveFunction == "changeFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
-    drawText(x + 15, y - 25, textLens)
+    drawText(x + int(15*uiScale), y - (25*uiScale), textLens)
 
     b = 1 if op.prefs.wheelMoveFunction == "changeHFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
-    drawText(x - 25, y - 50, textHFov)
+    drawText(x - int(25*uiScale), y - int(50*uiScale), textHFov)
 
     if isCameraData:
-        blf.size(op.fontId, 12, 72)
+        blf.size(op.fontId, int(12*uiScale), 72)
         blf.color(op.fontId, 1, 0.5, 0.1, alphaFactor)
-        drawText(x - 67, y - 80, "Showing Camera Values")
+        drawText(x - int(67*uiScale), y - int(80*uiScale), "Showing Camera Values")
 
     bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
 
