@@ -107,9 +107,12 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
     fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), (130, 0.5), (160, 0.25), 179)
+    strafeSensitivityRanges = ((0.001, 0.001), (0.02, 0.002), (0.05, 0.005), (0.1, 0.01), (0.2, 0.02), (0.5, 0.05), (1.0, 0.1), (2.0, 0.2), (5.0, 0.5), (10.0, 1.0), (20.0, 2.0), (50.0, 5.0), 100)
+
+    editStrafeSensitivityTime = -9999
 
     redrawAfterDrawCallback = False
-    
+
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
         if not running and event.value == "PRESS":
@@ -119,7 +122,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             running = True
             self.prefs = context.preferences.addons["mouse_strafing"].preferences
             context.window_manager.modal_handler_add(self)
-            args = (self, context, event)
+            args = (self, context)
             self.drawCallbackHandle = bpy.types.SpaceView3D.draw_handler_add(drawCallback, args, "WINDOW", "POST_PIXEL")
             context.area.tag_redraw()
             return {"RUNNING_MODAL"}
@@ -178,7 +181,11 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.resetMouse(context, event)
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             sv3d, rv3d = getViews3D(context)
-            if self.prefs.wheelMoveFunction == "moveZ":
+            if event.alt:
+                magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
+                magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
+                self.setStrafeSensitivity(nudgeValue(self.getStrafeSensitivity(), magnitude, self.increasedPrecision, self.strafeSensitivityRanges))
+            elif self.prefs.wheelMoveFunction == "moveZ":
                 mod = self.modScaleStrafe()
                 self.move3dView(sv3d, rv3d, \
                     Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
@@ -346,7 +353,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         # is a greater need to turn left/right than up/down. For strafing, forwards/backwards should not be more physically taxing than sideways movement.
         # By doing the following, we give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics.
         deltaStrafe = Vector((delta[0], delta[1]*1.2))
-        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * modStrafe
+        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.getStrafeSensitivity() * modStrafe
 
         sv3d, rv3d = getViews3D(context)
         if action == "turnXY":
@@ -363,6 +370,17 @@ class MouseStrafingOperator(bpy.types.Operator):
             elif action == "turnXRappel":
                 self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, strafeDelta[1])))
                 self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
+
+    def getStrafeSensitivity(self):
+        if not hasattr(bpy.types.Scene, "mstrf_sensitivity_strafe"):
+            return self.prefs.sensitivityStrafe
+        return bpy.types.Scene.mstrf_sensitivity_strafe
+    
+    def setStrafeSensitivity(self, value: float):
+        if not hasattr(bpy.types.Scene, "mstrf_sensitivity_strafe"):
+            bpy.types.Scene.mstrf_sensitivity_strafe = bpy.props.FloatProperty(options = {"HIDDEN"})
+        bpy.types.Scene.mstrf_sensitivity_strafe = value
+        self.editStrafeSensitivityTime = time.perf_counter()
 
     def pan3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector):
         viewPos, rot, _viewDir = prepareCameraTransformation(sv3d, rv3d)
@@ -504,12 +522,13 @@ def nudgeValue(value: float, magnitude: int, fine: bool, ranges: list) -> float:
         if value+0.00001 >= ranges[i][0]:
             snappedValue = round(value, 3) if fine else round(value / ranges[i][1], 0) * ranges[i][1]
             if (snappedValue > value + 0.00001 and magnitude >= 0) or snappedValue < value - 0.00001 and magnitude < 0:
-                return snappedValue
+                value = snappedValue
+                break
             value = snappedValue + (magnitude * 0.001 if fine else (ranges[i][1] if magnitude >= 0 else -ranges[i][1]))
             value = round(value, 3) if fine else round(value / ranges[i][1], 0) * ranges[i][1]
             if not fine and i > 0 and magnitude < 0 and value+0.00001 < ranges[i][0]:
                 value = ranges[i][0] - ranges[i-1][1]
-            return value
+            break
     if value-0.00001 <= minimum:
         return minimum
     if value+0.00001 >= maximum:
@@ -589,19 +608,20 @@ def fpsMove(op: MouseStrafingOperator, sv3d: bpy.types.SpaceView3D, rv3d: bpy.ty
     if op.keyDownUp: op.move3dView(sv3d, rv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
     return 0.0001
 
-def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
+def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context):
     if context.area != op.area:
         return
     sv3d, rv3d = getViews3D(context)
     if rv3d != op.region:
         return
-    drawCrosshair(op, context, event)
-    drawFovInfo(op, context, event)
+    drawCrosshair(op, context)
+    drawFovInfo(op, context)
+    drawStrafeSensitivityInfo(op, context)
     if op.redrawAfterDrawCallback:
         op.redrawAfterDrawCallback = False
         bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
 
-def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
+def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
     if not op.prefs.showCrosshair:
         return
     color = (0.75, 0.75, 0.75, 1)
@@ -625,18 +645,10 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context, event: 
     blf.position(op.fontId, x, y, 0)
     blf.draw(op.fontId, "+")
 
-def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
-    now = time.perf_counter()
-    holdTime = 1.0
-    fadeTime = 0.5
-    since = now - op.editFovTime
-    if since >= (holdTime + fadeTime):
+def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
+    alphaFactor = drawFadeAlpha(op, op.editFovTime, 1.0, 0.5)
+    if alphaFactor == 0:
         return
-    op.redrawAfterDrawCallback = True
-    alphaFactor = 1
-    if since > holdTime:
-        alphaFactor = 1 - (since - holdTime) / fadeTime
-    
     uiScale = context.preferences.system.ui_scale
     focalLength, sensorSize, hFov, vFov = None, None, None, None
     sv3d, rv3d = getViews3D(context)
@@ -678,6 +690,30 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bp
         blf.color(op.fontId, 1, 0.5, 0.1, alphaFactor)
         drawText(x - int(67*uiScale), y - int(80*uiScale), "Showing Camera Values")
 
+def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Context):
+    alphaFactor = drawFadeAlpha(op, op.editStrafeSensitivityTime, 1.0, 0.5)
+    if alphaFactor == 0:
+        return
+    x, y = context.region.width // 2, context.region.height // 2
+    blf.enable(op.fontId, blf.SHADOW)
+    blf.shadow(op.fontId, 3, 0, 0, 0, alphaFactor)
+    uiScale = context.preferences.system.ui_scale
+    blf.size(op.fontId, int(20*uiScale), 72)
+    blf.color(op.fontId, 1, 1, 1, alphaFactor)
+    drawText(x, y + int(30*uiScale), f"Strafe Sensitivity: {op.getStrafeSensitivity(): .3f}", halign = "CENTER")
+
+def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, fadeTime: float) -> float:
+    now = time.perf_counter()
+    passed = now - wakeTime
+    alphaFactor = 1.0
+    if passed > holdTime:
+        alphaFactor = 1.0 - (passed - holdTime) / fadeTime
+    if alphaFactor <= 0:
+        alphaFactor = 0.0
+    else:
+        op.redrawAfterDrawCallback = True
+    return alphaFactor
+
 def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
     sensorWidth = 36.0
     aspect = context.region.width / context.region.height
@@ -706,7 +742,14 @@ def focalLengthToFov(focalLength: float, sensorSideLength: float) -> float:
 def fovToFocalLength(fov: float, sensorSideLength: float) -> float:
     return sensorSideLength / math.tan(math.radians(fov)/2)
 
-def drawText(x: int, y: int, text: str):
+def drawText(x: int, y: int, text: str, halign: str = "LEFT", valign = "BASELINE"):
+    dims = blf.dimensions(0, text)
+    if halign == "CENTER":
+        x = x - dims[0]/2
+    elif halign == "RIGHT":
+        x = x - dims[0]
+    if valign == "MIDDLE":
+        y = y - dims[1]/2
     blf.position(0, x, y, 0)
     blf.draw(0, text)
 

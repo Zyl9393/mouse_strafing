@@ -3,9 +3,9 @@ import bpy
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
 
-    sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Mouse multiplier when panning the 3D View", \
+    sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Mouse speed multiplier when panning the 3D View", \
         default = 1.0, min = 0.01, max = 100.0, soft_min = 0.1, soft_max = 10.0, step = 1, precision = 2)
-    sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Mouse multiplier when mouse strafing", \
+    sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Default mouse speed multiplier when mouse strafing. Use Alt + Mousewheel to customize this value on a per-blend-file basis", \
         default = 1.0, min = 0.01, max = 100.0, soft_min = 0.1, soft_max = 10.0, step = 1, precision = 2)
 
     invertMouse: bpy.props.BoolProperty(name = "Invert Mouse Vertically", description = "Invert effect of vertical mouse movement when looking around", default = True)

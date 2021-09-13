@@ -4,6 +4,7 @@
 * Changing view angle with the mouse wheel now displays change on screen for a moment.
 	* Allow to set which aspect of view angle to control, i.e. horizontal view angle, vertical view angle or focal length in the addon preferences.
 	* Works for cameras, too.
+* Can now customize mouse strafe speed on a per-blend-file basis by using Alt + Mousewheel.
 * Added option to invert mouse horizontal movement.
 * Addon now correctly registers under `view3d` category of addons (instead of `view_3d`).
 
