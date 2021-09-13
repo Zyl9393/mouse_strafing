@@ -151,9 +151,9 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type == "ESC":
             self.inEscape = True if event.value == "PRESS" else (False if event.value == "RELEASE" else self.inEscape)
             return self.considerExitOperator(context)
-        elif event.type in [ "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" ]:
+        elif event.type in { "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" }:
             return self.updateMode(context, event)
-        elif event.type in [ "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" ]:
+        elif event.type in { "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" }:
             if self.ignoreMouseEvents > 0:
                 self.ignoreMouseEvents = self.ignoreMouseEvents - 1
                 self.bewareWarpDist = None
@@ -183,7 +183,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.move3dView(sv3d, rv3d, \
                     Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                     Vector((0, 0, 0)))
-            elif self.prefs.wheelMoveFunction in ["changeFOV", "changeHFOV", "changeVFOV"]:
+            elif self.prefs.wheelMoveFunction in {"changeFOV", "changeHFOV", "changeVFOV"}:
                 self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
         elif event.type in [self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp]:
             if self.stopSignal is None:
@@ -192,7 +192,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 pinnedStopSignal = self.stopSignal
                 bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
             self.updateKeys(context, event)
-        elif event.type in ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"]:
+        elif event.type in {"ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"}:
             self.keySaveStateDown = event.value == "PRESS"
             slotIndex = parseDigitString(event.type)
             if self.keySaveStateDown and self.keySaveStateSlotDown[slotIndex]:
