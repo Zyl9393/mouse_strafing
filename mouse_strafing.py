@@ -335,7 +335,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         if rv3d.is_perspective != cameraState.isPerspective:
             bpy.ops.view3d.view_persportho()
         rv3d.view_distance = cameraState.viewDist
-        sv3d.lens = cameraState.lens
+        if not self.prefs.leaveFOV:
+            sv3d.lens = cameraState.lens
 
         vP = cameraState.viewPos
         r = cameraState.rot
