@@ -90,6 +90,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     keySaveStateSlotDown = [False, False, False, False, False, False, False, False, False, False]
 
     keyDownRelocatePivot = False
+    relocatePivotLock = False
     adjustPivotSuccess = False
     
     prefs: MouseStrafingPreferences = None
@@ -210,15 +211,18 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type == self.prefs.keyRelocatePivot:
             if event.value == "PRESS" and not self.keyDownRelocatePivot:
                 self.keyDownRelocatePivotTime = time.perf_counter()
+                self.relocatePivotLock = False
             elif self.keyDownRelocatePivotTime is not None:
                 now = time.perf_counter()
                 if now - self.keyDownRelocatePivotTime >= 1.0:
+                    self.relocatePivotLock = self.prefs.adjustPivot
                     self.prefs.adjustPivot = not self.prefs.adjustPivot
+                    self.adjustPivotSuccess = False
                     self.keyDownRelocatePivotTime = None
             self.keyDownRelocatePivot = event.value == "PRESS"
-            if self.keyDownRelocatePivot:
+            if self.keyDownRelocatePivot and not self.prefs.adjustPivot and not self.relocatePivotLock:
                 self.adjustPivot(context)
-            else:
+            if not self.keyDownRelocatePivot:
                 self.keyDownRelocatePivotTime = None
         elif event.type == self.prefs.keyResetRoll:
             if event.value == "PRESS":
