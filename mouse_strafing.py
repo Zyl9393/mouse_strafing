@@ -107,6 +107,8 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
     fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), (130, 0.5), (160, 0.25), 179)
+
+    redrawAfterDrawCallback = False
     
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
@@ -595,15 +597,13 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context, event: b
         return
     drawCrosshair(op, context, event)
     drawFovInfo(op, context, event)
+    if op.redrawAfterDrawCallback:
+        op.redrawAfterDrawCallback = False
+        bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
 
 def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
     if not op.prefs.showCrosshair:
         return
-    x, y = context.region.width // 2 - 8, context.region.height // 2 - 7
-    blf.size(op.fontId, 20, 72)
-    blf.color(op.fontId, 0, 0, 0, 0.8)
-    blf.position(op.fontId, x, y, 0)
-    blf.draw(op.fontId, "+")
     color = (0.75, 0.75, 0.75, 1)
     if op.keyDownRelocatePivot:
         if op.prefs.adjustPivot:
@@ -617,7 +617,12 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context, event: 
     elif op.isInMouseMode:
         color = (1, 1, 1, 1)
     blf.color(op.fontId, *color)
-    blf.position(op.fontId, x, y+1, 0)
+    blf.enable(op.fontId, blf.SHADOW)
+    blf.shadow(op.fontId, 3, 0, 0, 0, 1)
+    uiScale = context.preferences.system.ui_scale
+    blf.size(op.fontId, int(20*uiScale), 72)
+    x, y = context.region.width // 2 - int(8*uiScale), context.region.height // 2 - int(6*uiScale)
+    blf.position(op.fontId, x, y, 0)
     blf.draw(op.fontId, "+")
 
 def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bpy.types.Event):
@@ -627,6 +632,7 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bp
     since = now - op.editFovTime
     if since >= (holdTime + fadeTime):
         return
+    op.redrawAfterDrawCallback = True
     alphaFactor = 1
     if since > holdTime:
         alphaFactor = 1 - (since - holdTime) / fadeTime
@@ -653,7 +659,7 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bp
     blf.enable(op.fontId, blf.SHADOW)
     blf.shadow(op.fontId, 3, 0, 0, 0, alphaFactor)
     blf.size(op.fontId, int(20*uiScale), 72)
-    x, y = context.region.width // 2, context.region.height // 2 - int(7*uiScale)
+    x, y = context.region.width // 2, context.region.height // 2 - int(6*uiScale)
 
     b = 1 if op.prefs.wheelMoveFunction == "changeVFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
@@ -671,8 +677,6 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context, event: bp
         blf.size(op.fontId, int(12*uiScale), 72)
         blf.color(op.fontId, 1, 0.5, 0.1, alphaFactor)
         drawText(x - int(67*uiScale), y - int(80*uiScale), "Showing Camera Values")
-
-    bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
 
 def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
     sensorWidth = 36.0
