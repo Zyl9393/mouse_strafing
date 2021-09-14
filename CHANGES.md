@@ -6,6 +6,7 @@
 	* Works for cameras, too.
 * Can now customize mouse strafe speed on a per-blend-file basis by using Alt + Mousewheel.
 * Holding the Relocate Pivot key to disable automatic pivot relocation will no longer cause a pivot relocation.
+* Fixed toggling automic pivot relocation by holding the Relocate Pivot key not being saved in the addon preferences when closing Blender.
 * Added option to prevent the loading of camera states from changing the FOV.
 * Added option to invert mouse horizontal movement.
 * Addon now correctly registers under `view3d` category of addons (instead of `view_3d`).

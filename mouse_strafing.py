@@ -217,6 +217,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 if now - self.keyDownRelocatePivotTime >= 1.0:
                     self.relocatePivotLock = self.prefs.adjustPivot
                     self.prefs.adjustPivot = not self.prefs.adjustPivot
+                    context.preferences.use_preferences_save = True
                     self.adjustPivotSuccess = False
                     self.keyDownRelocatePivotTime = None
             self.keyDownRelocatePivot = event.value == "PRESS"
