@@ -114,6 +114,8 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     redrawAfterDrawCallback = False
 
+    loadCameraState = False
+
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
         if not running and event.value == "PRESS":
@@ -208,6 +210,9 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.keySaveStateSlotDown[slotIndex] = self.keySaveStateDown
             if self.keySaveStateDown:
                 self.processSaveState(slotIndex, context)
+        elif event.type == self.prefs.keyLoadCameraState:
+            if event.value == "PRESS":
+                self.loadCameraState = not self.loadCameraState
         elif event.type == self.prefs.keyRelocatePivot:
             if event.value == "PRESS" and not self.keyDownRelocatePivot:
                 self.keyDownRelocatePivotTime = time.perf_counter()
@@ -309,9 +314,16 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.initSaveStates(context)
         now = time.perf_counter()
         states: CameraStates = context.scene.mstrf_camera_save_states
-        if states.imminentSlot == saveStateSlot and self.imminentSaveStateTime > now - 1.0:
-            if not states.usedStates[saveStateSlot]:
-                self.saveCameraState(states, saveStateSlot, states.imminentState)
+        if self.loadCameraState:
+            if states.imminentSlot != 0:
+                self.saveCameraState(states, states.imminentSlot, states.imminentState)
+                states.imminentSlot = -1
+            if states.usedStates[saveStateSlot]:
+                self.applyCameraState(context, states.savedStates[saveStateSlot])
+            self.loadCameraState = False
+        elif states.imminentSlot == saveStateSlot and self.imminentSaveStateTime > now - 1.0:
+            if not states.usedStates[states.imminentSlot]:
+                self.saveCameraState(states, states.imminentSlot, states.imminentState)
             self.applyCameraState(context, states.savedStates[saveStateSlot])
             states.imminentSlot = -1
         else:
@@ -640,6 +652,8 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
             color = (1, 0.1, 0.05, 1)
     elif op.keySaveStateDown:
         color = (1, 0.05, 1, 1)
+    elif op.loadCameraState:
+        color = (0.05, 0.15, 1, 1)
     elif op.isInMouseMode:
         color = (1, 1, 1, 1)
     blf.color(op.fontId, *color)

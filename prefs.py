@@ -54,8 +54,9 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     keyUp: bpy.props.StringProperty(name = "Move Up", description = "Press this key to strafe the camera upwards (must be upper-case)", default = "E")
     keyDown: bpy.props.StringProperty(name = "Move Down", description = "Press this key to strafe the camera downwards (must be upper-case)", default = "Q")
 
-    keyRelocatePivot: bpy.props.StringProperty(name = "Relocate Pivot", description = "Press this key to relocate camera pivot to the nearest surface in the center of the view. You can also hold it for one second to toggle Automatically Relocate Pivot on and off", default = "C")
-    keyResetRoll: bpy.props.StringProperty(name = "Reset Roll", description = "Press this key to reset camera roll", default = "R")
+    keyResetRoll: bpy.props.StringProperty(name = "Reset Roll", description = "Press this key to reset camera roll (must be upper-case)", default = "R")
+    keyRelocatePivot: bpy.props.StringProperty(name = "Relocate Pivot", description = "Press this key to relocate camera pivot to the nearest surface in the center of the view. You can also hold it for one second to toggle Automatically Relocate Pivot on and off (must be upper-case)", default = "C")
+    keyLoadCameraState: bpy.props.StringProperty(name = "Load Camera State", description = "Press this key and then one of the number keys [0-9] to load the camera state in that slot without the need to quickly press the number key twice (must be upper-case)", default = "T")
 
     def draw(self, context: bpy.types.Context):
         prefs: MouseStrafingPreferences = context.preferences.addons["mouse_strafing"].preferences
@@ -118,5 +119,6 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         box.row().prop(self, "keyRight")
         box.row().prop(self, "keyUp")
         box.row().prop(self, "keyDown")
-        box.row().prop(self, "keyRelocatePivot")
         box.row().prop(self, "keyResetRoll")
+        box.row().prop(self, "keyRelocatePivot")
+        box.row().prop(self, "keyLoadCameraState")
