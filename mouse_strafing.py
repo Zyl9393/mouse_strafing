@@ -46,6 +46,9 @@ def signExp(base, exponent) -> float:
     s = math.pow(v, exponent)
     return s if base > 0 else -s
 
+def getKeyDown(previousKeyState: bool, event: bpy.types.Event) -> bool:
+    return True if event.value == "PRESS" else (False if event.value == "RELEASE" else previousKeyState)
+
 running = False
 
 class CameraState(bpy.types.PropertyGroup):
@@ -116,6 +119,9 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     loadCameraState = False
 
+    editGearTime = -9999
+    keyCycleGearsDown = False
+
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
         if not running and event.value == "PRESS":
@@ -155,7 +161,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.modeKeyDown = False
             return self.considerExitOperator(context)
         elif event.type == "ESC":
-            self.inEscape = True if event.value == "PRESS" else (False if event.value == "RELEASE" else self.inEscape)
+            self.inEscape = getKeyDown(self.inEscape, event)
             return self.considerExitOperator(context)
         elif event.type in { "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" }:
             return self.updateMode(context, event)
@@ -195,6 +201,10 @@ class MouseStrafingOperator(bpy.types.Operator):
                     Vector((0, 0, 0)))
             elif self.prefs.wheelMoveFunction in {"changeFOV", "changeHFOV", "changeVFOV"}:
                 self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
+        elif event.type == self.prefs.keyCycleGears:
+            if event.value == "PRESS":
+                self.cycleGear(context, event.shift, not self.keyCycleGearsDown)
+            self.keyCycleGearsDown = getKeyDown(self.keyCycleGearsDown, event)
         elif event.type in {self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp}:
             if self.stopSignal is None:
                 self.stopSignal = [False]
@@ -203,7 +213,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
             self.updateKeys(context, event)
         elif event.type in {"ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"}:
-            self.keySaveStateDown = event.value == "PRESS"
+            self.keySaveStateDown = getKeyDown(self.keySaveStateDown, event)
             slotIndex = parseDigitString(event.type)
             if self.keySaveStateDown and self.keySaveStateSlotDown[slotIndex]:
                 return {"RUNNING_MODAL"}
@@ -225,7 +235,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                     context.preferences.use_preferences_save = True
                     self.adjustPivotSuccess = False
                     self.keyDownRelocatePivotTime = None
-            self.keyDownRelocatePivot = event.value == "PRESS"
+            self.keyDownRelocatePivot = getKeyDown(self.keyDownRelocatePivot, event)
             if self.keyDownRelocatePivot and not self.prefs.adjustPivot and not self.relocatePivotLock:
                 self.adjustPivot(context)
             if not self.keyDownRelocatePivot:
@@ -238,13 +248,37 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.area.tag_redraw()
         return {"RUNNING_MODAL"}
 
+    def cycleGear(self, context: bpy.types.Context, gearDown: bool, allowWrap: bool):
+        availableGears = self.getGears()
+        gear, gearIndex = self.findGear(context, availableGears)
+        if gearIndex == -1:
+            return
+        change = -1 if gearDown else 1
+        gearIndex = gearIndex + change
+        if not allowWrap:
+            if gearIndex < 0:
+                gearIndex = 0
+            elif gearIndex >= len(availableGears):
+                gearIndex = len(availableGears) - 1
+        else:
+            gearIndex = gearIndex % len(availableGears)
+        self.setGear(context, availableGears[gearIndex])
+        self.editGearTime = time.perf_counter()
+
+    def getGears(self):
+        availableGears = []
+        for gear in self.prefs.strafeGears:
+            if gear != 0.0:
+                availableGears.append(gear)
+        return availableGears
+
     def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, context: bpy.types.Context, zoomOut: bool):
         if rv3d.view_perspective == "CAMERA":
             if sv3d.lock_camera and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
                 cam = bpy.types.Camera(sv3d.camera.data)
                 sensorSize = getSensorSize(context, cam)
                 cam.lens = self.nudgeLensValue(cam.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, zoomOut)
-                self.editFovTime = time.perf_counter() 
+                self.editFovTime = time.perf_counter()
         else:
             sensorSize = getSensorSizeView3d(context)
             sv3d.lens = self.nudgeLensValue(sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, zoomOut)
@@ -371,7 +405,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         # is a greater need to turn left/right than up/down. For strafing, forwards/backwards should not be more physically taxing than sideways movement.
         # By doing the following, we give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics.
         deltaStrafe = Vector((delta[0], delta[1]*1.2))
-        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.getStrafeSensitivity() * modStrafe
+        gear, _ = self.findGear(context, self.getGears())
+        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.getStrafeSensitivity() * gear * modStrafe
 
         sv3d, rv3d = getViews3D(context)
         if action == "turnXY":
@@ -399,6 +434,31 @@ class MouseStrafingOperator(bpy.types.Operator):
             bpy.types.Scene.mstrf_sensitivity_strafe = bpy.props.FloatProperty(options = {"HIDDEN"})
         bpy.types.Scene.mstrf_sensitivity_strafe = value
         self.editStrafeSensitivityTime = time.perf_counter()
+
+    def getGear(self, context: bpy.types.Context) -> float:
+        if hasattr(bpy.types.Scene, "mstrf_gear"):
+            return context.scene.mstrf_gear
+        return 1.0
+
+    def setGear(self, context: bpy.types.Context, gear: float):
+        if not hasattr(bpy.types.Scene, "mstrf_gear"):
+            bpy.types.Scene.mstrf_gear = bpy.props.FloatProperty(options = {"HIDDEN"})
+        context.scene.mstrf_gear = gear
+
+    def findGear(self, context: bpy.types.Context, gears: list) -> (float, int):
+        gearSetting = self.getGear(context)
+        smallestError = math.inf
+        smallestErrorGear = 1.0
+        smallestErrorGearIndex = -1
+        index = 0
+        for gear in gears:
+            error = abs(gear - gearSetting)
+            if error <= smallestError:
+                smallestError = error
+                smallestErrorGear = gear
+                smallestErrorGearIndex = index
+            index = index + 1
+        return smallestErrorGear, smallestErrorGearIndex
 
     def pan3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector):
         viewPos, rot, _viewDir = prepareCameraTransformation(sv3d, rv3d)
@@ -635,6 +695,7 @@ def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context):
     drawCrosshair(op, context)
     drawFovInfo(op, context)
     drawStrafeSensitivityInfo(op, context)
+    drawGears(op, context)
     if op.redrawAfterDrawCallback:
         op.redrawAfterDrawCallback = False
         bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
@@ -666,7 +727,7 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
     blf.draw(op.fontId, "+")
 
 def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editFovTime, 1.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editFovTime, 10.0, 0.5)
     if alphaFactor == 0:
         return
     uiScale = context.preferences.system.ui_scale
@@ -684,34 +745,34 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
     hFov = focalLengthToFov(focalLength, sensorSize[0])
     vFov = focalLengthToFov(focalLength, sensorSize[1])
 
-    textLens = f"{focalLength: .3f}mm"
-    textHFov = f"{hFov: .3f}°"
-    textVFov = f"{vFov: .3f}°"
+    textLens = f"     {focalLength: .3f}mm"
+    textHFov = f" {hFov: .3f}°"
+    textVFov = f" {vFov: .3f}°"
 
     blf.enable(op.fontId, blf.SHADOW)
     blf.shadow(op.fontId, 3, 0, 0, 0, alphaFactor)
     blf.size(op.fontId, int(20*uiScale), 72)
-    x, y = context.region.width // 2, context.region.height // 2 - int(6*uiScale)
+    x, y = context.region.width // 2, context.region.height // 2
 
     b = 1 if op.prefs.wheelMoveFunction == "changeVFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
-    drawText(x + int(55*uiScale), y, textVFov)
+    drawText(x + int(100*uiScale), y, textVFov, halign = "CENTER", valign = "MIDDLE")
 
     b = 1 if op.prefs.wheelMoveFunction == "changeFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
-    drawText(x + int(15*uiScale), y - (25*uiScale), textLens)
+    drawText(x + int(50*uiScale), y - (25*uiScale), textLens, halign = "CENTER", valign = "MIDDLE")
 
     b = 1 if op.prefs.wheelMoveFunction == "changeHFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
-    drawText(x - int(25*uiScale), y - int(50*uiScale), textHFov)
+    drawText(x, y - int(50*uiScale), textHFov, halign = "CENTER", valign = "MIDDLE")
 
     if isCameraData:
         blf.size(op.fontId, int(12*uiScale), 72)
         blf.color(op.fontId, 1, 0.5, 0.1, alphaFactor)
-        drawText(x - int(67*uiScale), y - int(80*uiScale), "Showing Camera Values")
+        drawText(x, y - int(95*uiScale), "Showing Camera Values", halign = "CENTER")
 
 def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editStrafeSensitivityTime, 1.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editStrafeSensitivityTime, 10.0, 0.5)
     if alphaFactor == 0:
         return
     x, y = context.region.width // 2, context.region.height // 2
@@ -720,7 +781,29 @@ def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Cont
     uiScale = context.preferences.system.ui_scale
     blf.size(op.fontId, int(20*uiScale), 72)
     blf.color(op.fontId, 1, 1, 1, alphaFactor)
-    drawText(x, y + int(30*uiScale), f"Strafe Sensitivity: {op.getStrafeSensitivity(): .3f}", halign = "CENTER")
+    drawText(x, y + int(40*uiScale), f"{op.getStrafeSensitivity(): .3f}", halign = "CENTER")
+
+def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
+    alphaFactor = drawFadeAlpha(op, op.editGearTime, 10.0, 0.5)
+    if alphaFactor == 0:
+        return
+    x, y = context.region.width // 2, context.region.height // 2
+    blf.enable(op.fontId, blf.SHADOW)
+    blf.shadow(op.fontId, 3, 0, 0, 0, alphaFactor)
+    uiScale = context.preferences.system.ui_scale
+    blf.size(op.fontId, int(20*uiScale), 72)
+    blf.color(op.fontId, 1, 1, 1, alphaFactor)
+    availableGears = op.getGears()
+    gearSetting, _ = op.findGear(context, availableGears)
+    yoffset = ((len(availableGears) - 1) * 25) / 2
+    index = 0
+    for gear in availableGears:
+        if gear == gearSetting:
+            blf.color(op.fontId, 1, 1, 1, alphaFactor)
+        else:
+            blf.color(op.fontId, 0.75, 0.75, 0.75, alphaFactor)
+        drawText(x - (110*uiScale), y - int((yoffset-index*25)*uiScale), f"{gear: 0.3f}", halign = "CENTER", valign = "MIDDLE")
+        index = index + 1
 
 def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, fadeTime: float) -> float:
     now = time.perf_counter()
@@ -762,7 +845,7 @@ def focalLengthToFov(focalLength: float, sensorSideLength: float) -> float:
 def fovToFocalLength(fov: float, sensorSideLength: float) -> float:
     return sensorSideLength / math.tan(math.radians(fov)/2)
 
-def drawText(x: int, y: int, text: str, halign: str = "LEFT", valign = "BASELINE"):
+def drawText(x: int, y: int, text: str, halign: str = "LEFT", valign: str = "BASELINE"):
     dims = blf.dimensions(0, text)
     if halign == "CENTER":
         x = x - dims[0]/2

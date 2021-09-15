@@ -5,6 +5,7 @@
 	* Allow to set which aspect of view angle to control, i.e. horizontal view angle, vertical view angle or focal length in the addon preferences.
 	* Works for cameras, too.
 * Can now customize mouse strafe speed on a per-blend-file basis by using Alt + Mousewheel.
+* Can now configure up to 7 mouse strafe speed multipliers which can be cycled through by pressing G or Shift+G.
 * Holding the Relocate Pivot key to disable automatic pivot relocation will no longer cause a pivot relocation.
 * Fixed toggling automic pivot relocation by holding the Relocate Pivot key not being saved in the addon preferences when closing Blender.
 * Added option to load camera state after pressing a key instead of having to quickly tap a number key twice.
