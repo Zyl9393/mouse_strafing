@@ -195,7 +195,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                     Vector((0, 0, 0)))
             elif self.prefs.wheelMoveFunction in {"changeFOV", "changeHFOV", "changeVFOV"}:
                 self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
-        elif event.type in [self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp]:
+        elif event.type in {self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp}:
             if self.stopSignal is None:
                 self.stopSignal = [False]
                 pinnedSv3d, pinnedRv3d = getViews3D(context)
