@@ -727,7 +727,7 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
     blf.draw(op.fontId, "+")
 
 def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editFovTime, 10.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editFovTime, 1.0, 0.5)
     if alphaFactor == 0:
         return
     uiScale = context.preferences.system.ui_scale
@@ -772,7 +772,7 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
         drawText(x, y - int(95*uiScale), "Showing Camera Values", halign = "CENTER")
 
 def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editStrafeSensitivityTime, 10.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editStrafeSensitivityTime, 1.0, 0.5)
     if alphaFactor == 0:
         return
     x, y = context.region.width // 2, context.region.height // 2
@@ -784,7 +784,7 @@ def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Cont
     drawText(x, y + int(40*uiScale), f"{op.getStrafeSensitivity(): .3f}", halign = "CENTER")
 
 def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editGearTime, 10.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editGearTime, 1.0, 0.5)
     if alphaFactor == 0:
         return
     x, y = context.region.width // 2, context.region.height // 2
