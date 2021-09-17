@@ -140,7 +140,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     def initSaveStates(self, context: bpy.types.Context):
         if not hasattr(bpy.types.Scene, "mstrf_camera_save_states"):
             bpy.types.Scene.mstrf_camera_save_states = bpy.props.PointerProperty(type = CameraStates, options = {"HIDDEN"})
-        states = context.scene.mstrf_camera_save_states
+        states: CameraStates = context.scene.mstrf_camera_save_states
         while len(states.savedStates) < 10:
             states.savedStates.add()
 
@@ -193,7 +193,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             if event.alt:
                 magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
                 magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
-                self.setStrafeSensitivity(nudgeValue(self.getStrafeSensitivity(), magnitude, self.increasedPrecision, self.strafeSensitivityRanges))
+                self.setStrafeSensitivity(context, nudgeValue(self.getStrafeSensitivity(context), magnitude, self.increasedPrecision, self.strafeSensitivityRanges))
             elif self.prefs.wheelMoveFunction == "moveZ":
                 mod = self.modScaleStrafe()
                 self.move3dView(sv3d, rv3d, \
@@ -406,7 +406,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         # By doing the following, we give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics.
         deltaStrafe = Vector((delta[0], delta[1]*1.2))
         gear, _ = self.findGear(context, self.getGears())
-        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.getStrafeSensitivity() * gear * modStrafe
+        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.getStrafeSensitivity(context) * gear * modStrafe
 
         sv3d, rv3d = getViews3D(context)
         if action == "turnXY":
@@ -424,25 +424,29 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, strafeDelta[1])))
                 self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
 
-    def getStrafeSensitivity(self):
+    def initStrafeSensitivity(self):
         if not hasattr(bpy.types.Scene, "mstrf_sensitivity_strafe"):
-            return self.prefs.sensitivityStrafe
-        return bpy.types.Scene.mstrf_sensitivity_strafe
+            bpy.types.Scene.mstrf_sensitivity_strafe = bpy.props.FloatProperty(default = self.prefs.sensitivityStrafe, options = {"HIDDEN"})
+
+    def initGear(self):
+        if not hasattr(bpy.types.Scene, "mstrf_gear"):
+            bpy.types.Scene.mstrf_gear = bpy.props.FloatProperty(default = 1.0, options = {"HIDDEN"})
+
+    def getStrafeSensitivity(self, context: bpy.types.Context):
+        self.initStrafeSensitivity()
+        return context.scene.mstrf_sensitivity_strafe
     
-    def setStrafeSensitivity(self, value: float):
-        if not hasattr(bpy.types.Scene, "mstrf_sensitivity_strafe"):
-            bpy.types.Scene.mstrf_sensitivity_strafe = bpy.props.FloatProperty(options = {"HIDDEN"})
-        bpy.types.Scene.mstrf_sensitivity_strafe = value
+    def setStrafeSensitivity(self, context: bpy.types.Context, value: float):
+        self.initStrafeSensitivity()
+        context.scene.mstrf_sensitivity_strafe = value
         self.editStrafeSensitivityTime = time.perf_counter()
 
     def getGear(self, context: bpy.types.Context) -> float:
-        if hasattr(bpy.types.Scene, "mstrf_gear"):
-            return context.scene.mstrf_gear
-        return 1.0
+        self.initGear()
+        return context.scene.mstrf_gear
 
     def setGear(self, context: bpy.types.Context, gear: float):
-        if not hasattr(bpy.types.Scene, "mstrf_gear"):
-            bpy.types.Scene.mstrf_gear = bpy.props.FloatProperty(options = {"HIDDEN"})
+        self.initGear()
         context.scene.mstrf_gear = gear
 
     def findGear(self, context: bpy.types.Context, gears: list) -> (float, int):
@@ -781,7 +785,7 @@ def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Cont
     uiScale = context.preferences.system.ui_scale
     blf.size(op.fontId, int(20*uiScale), 72)
     blf.color(op.fontId, 1, 1, 1, alphaFactor)
-    drawText(x, y + int(40*uiScale), f"{op.getStrafeSensitivity(): .3f}", halign = "CENTER")
+    drawText(x, y + int(40*uiScale), f"{op.getStrafeSensitivity(context): .3f}", halign = "CENTER")
 
 def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
     alphaFactor = drawFadeAlpha(op, op.editGearTime, 1.0, 0.5)
