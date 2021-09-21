@@ -13,14 +13,18 @@ from . import prefs
 
 def unregister():
     mouse_strafing.unregister_keymaps()
+    bpy.types.VIEW3D_PT_view3d_properties.remove(mouse_strafing.drawStrafeSensitivity)
     bpy.utils.unregister_class(prefs.MouseStrafingPreferences)
     bpy.utils.unregister_class(mouse_strafing.MouseStrafingOperator)
+    bpy.utils.unregister_class(mouse_strafing.UnsetSceneStrafeSensitivity)
     bpy.utils.unregister_class(mouse_strafing.CameraStates)
     bpy.utils.unregister_class(mouse_strafing.CameraState)
 
 def register():
     bpy.utils.register_class(mouse_strafing.CameraState)
     bpy.utils.register_class(mouse_strafing.CameraStates)
+    bpy.utils.register_class(mouse_strafing.UnsetSceneStrafeSensitivity)
     bpy.utils.register_class(mouse_strafing.MouseStrafingOperator)
     bpy.utils.register_class(prefs.MouseStrafingPreferences)
+    bpy.types.VIEW3D_PT_view3d_properties.append(mouse_strafing.drawStrafeSensitivity)
     mouse_strafing.register_keymaps()

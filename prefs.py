@@ -1,12 +1,15 @@
 import bpy
 
+def updateSensitivityStrafeDefault(self, context: bpy.types.Context):
+    bpy.types.Scene.mstrf_sensitivity_strafe = bpy.props.FloatProperty(default = self.sensitivityStrafeDefault, options = {"HIDDEN"}, min = 0.001, soft_min = 0.01, max = 100.0, soft_max = 10.0, step = 1, precision = 3, description = "Per-scene strafe multiplier")
+
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
 
     sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Mouse speed multiplier when panning the 3D View", \
-        default = 1.0, min = 0.01, max = 100.0, soft_min = 0.1, soft_max = 10.0, step = 1, precision = 2)
-    sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Default mouse speed multiplier when mouse strafing. Use Alt + Mousewheel to customize this value on a per-blend-file basis", \
-        default = 1.0, min = 0.01, max = 100.0, soft_min = 0.1, soft_max = 10.0, step = 1, precision = 2)
+        default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 2)
+    sensitivityStrafeDefault: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Default mouse speed multiplier when mouse strafing. Edit this value on a per-blend-file basis in the view panel", \
+        default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 2, update = updateSensitivityStrafeDefault)
     strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe multipliers to cycle through with G/Shift-G. Entries set to 0 are ignored", size = 7, default = (0.1, 1.0, 5.0, 0, 0, 0, 0), min = 0.0, max = 1000.0, soft_min = 0.0, soft_max = 100.0, step = 5, precision = 2)
 
     invertMouse: bpy.props.BoolProperty(name = "Invert Mouse Vertically", description = "Invert effect of vertical mouse movement when looking around", default = True)
@@ -74,7 +77,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         row = box.row()
         row.prop(self, "sensitivityPan")
-        row.prop(self, "sensitivityStrafe")
+        row.prop(self, "sensitivityStrafeDefault")
         box.row().prop(self, "strafeGears")
         
         row = box.row()
