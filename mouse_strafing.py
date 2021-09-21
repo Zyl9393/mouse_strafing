@@ -191,16 +191,16 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
             sv3d, rv3d = getViews3D(context)
             if event.alt:
-                magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
-                magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
-                self.setStrafeSensitivity(context, nudgeValue(self.getStrafeSensitivity(context), magnitude, self.increasedPrecision, self.strafeSensitivityRanges))
+                self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
             elif self.prefs.wheelMoveFunction == "moveZ":
                 mod = self.modScaleStrafe()
                 self.move3dView(sv3d, rv3d, \
                     Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
                     Vector((0, 0, 0)))
-            elif self.prefs.wheelMoveFunction in {"changeFOV", "changeHFOV", "changeVFOV"}:
-                self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
+            elif self.prefs.wheelMoveFunction == "changeStrafeSensitivity":
+                magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
+                magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
+                self.setStrafeSensitivity(context, nudgeValue(self.getStrafeSensitivity(context), magnitude, self.increasedPrecision, self.strafeSensitivityRanges))
         elif event.type == self.prefs.keyCycleGears:
             if event.value == "PRESS":
                 self.cycleGear(context, event.shift, not self.keyCycleGearsDown)
@@ -277,15 +277,21 @@ class MouseStrafingOperator(bpy.types.Operator):
             if sv3d.lock_camera and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
                 cam = bpy.types.Camera(sv3d.camera.data)
                 sensorSize = getSensorSize(context, cam)
-                cam.lens = self.nudgeLensValue(cam.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, zoomOut)
+                cam.lens = self.nudgeLensValue(cam.lens, sensorSize[0], sensorSize[1], self.prefs.altWheelMoveFunction, zoomOut)
                 self.editFovTime = time.perf_counter()
         else:
             sensorSize = getSensorSizeView3d(context)
-            sv3d.lens = self.nudgeLensValue(sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.wheelMoveFunction, zoomOut)
+            sv3d.lens = self.nudgeLensValue(sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.altWheelMoveFunction, zoomOut)
             self.editFovTime = time.perf_counter()
 
-    def nudgeLensValue(self, lens: float, sensorWidth: float, sensorHeight: float, method: str, up: bool) -> float:
-        magnitude = 1 if up else -1
+    def getContextualFocalLength(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> float:
+        if rv3d.view_perspective == "CAMERA" and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
+            cam = bpy.types.Camera(sv3d.camera.data)
+            return cam.lens
+        return sv3d.lens
+
+    def nudgeLensValue(self, lens: float, sensorWidth: float, sensorHeight: float, method: str, zoomOut: bool) -> float:
+        magnitude = 1 if zoomOut else -1
         magnitude = -magnitude if method == "changeFOV" else magnitude
         magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
         if method == "changeHFOV":
@@ -306,10 +312,14 @@ class MouseStrafingOperator(bpy.types.Operator):
             return 0.5
         return 1
 
-    def modScalePan(self):
+    def modScalePan(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D):
         inSlowStrafe = self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
         if self.alternateControl:
-            return 0.2
+            maxMod = 0.1
+            mod = maxMod / ((self.getContextualFocalLength(sv3d, rv3d) / 50) if self.alternateControl else 1)
+            if mod > maxMod:
+                return maxMod
+            return mod
         if inSlowStrafe:
             return 0.5
         return 1
@@ -394,7 +404,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         applyCameraTranformation(sv3d, rv3d, Vector((vP[0], vP[1], vP[2])), Quaternion((r[0], r[1], r[2], r[3])))
 
     def performMouseAction(self, context: bpy.types.Context, delta: Vector, action):
-        modPan = self.modScalePan()
+        sv3d, rv3d = getViews3D(context)
+        modPan = self.modScalePan(sv3d, rv3d)
         modStrafe = self.modScaleStrafe()
 
         # Panning feels more sensitive during WASD movement as well as rappel movement.
@@ -408,7 +419,6 @@ class MouseStrafingOperator(bpy.types.Operator):
         gear, _ = self.findGear(context, self.getGears())
         strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * self.getStrafeSensitivity(context) * gear * modStrafe
 
-        sv3d, rv3d = getViews3D(context)
         if action == "turnXY":
             self.pan3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
         elif action == "roll":
@@ -758,15 +768,15 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
     blf.size(op.fontId, int(20*uiScale), 72)
     x, y = context.region.width // 2, context.region.height // 2
 
-    b = 1 if op.prefs.wheelMoveFunction == "changeVFOV" else 0.75
+    b = 1 if op.prefs.altWheelMoveFunction == "changeVFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
     drawText(x + int(100*uiScale), y, textVFov, halign = "CENTER", valign = "MIDDLE")
 
-    b = 1 if op.prefs.wheelMoveFunction == "changeFOV" else 0.75
+    b = 1 if op.prefs.altWheelMoveFunction == "changeFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
     drawText(x + int(50*uiScale), y - (25*uiScale), textLens, halign = "CENTER", valign = "MIDDLE")
 
-    b = 1 if op.prefs.wheelMoveFunction == "changeHFOV" else 0.75
+    b = 1 if op.prefs.altWheelMoveFunction == "changeHFOV" else 0.75
     blf.color(op.fontId, b, b, b, alphaFactor)
     drawText(x, y - int(50*uiScale), textHFov, halign = "CENTER", valign = "MIDDLE")
 

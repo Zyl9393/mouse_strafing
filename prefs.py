@@ -31,10 +31,15 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     mouseWheelActionItems = [\
         ("moveZ", "Move forward/backwards", "Move forward/backwards", "NONE", 0), \
-        ("changeFOV", "Change Focal Length", "Change the field of view (FOV) by controlling the distance of the lens to the camera sensor", "NONE", 1), \
-        ("changeHFOV", "Change Horizontal FOV", "Change the field of view (FOV) by controlling the horizontal view angle", "NONE", 2), \
-        ("changeVFOV", "Change Vertical FOV", "Change the field of view (FOV) by controlling the vertical view angle", "NONE", 3)]
-    wheelMoveFunction: bpy.props.EnumProperty(name = "Wheel", description = "Set what the scroll wheel does", items = mouseWheelActionItems, default = "changeVFOV")
+        ("changeStrafeSensitivity", "Change strafe sensitivity", "Change the per-scene strafe sensitivity", "NONE", 1)]
+    wheelMoveFunction: bpy.props.EnumProperty(name = "Wheel", description = "Set what the scroll wheel does", items = mouseWheelActionItems, default = "moveZ")
+
+    altMouseWheelActionItems = [\
+        ("changeFOV", "Change Focal Length", "Change the field of view (FOV) by controlling the distance of the lens to the camera sensor", "NONE", 0), \
+        ("changeHFOV", "Change Horizontal FOV", "Change the field of view (FOV) by controlling the horizontal view angle", "NONE", 1), \
+        ("changeVFOV", "Change Vertical FOV", "Change the field of view (FOV) by controlling the vertical view angle", "NONE", 2)]
+    altWheelMoveFunction: bpy.props.EnumProperty(name = "Wheel (Alt)", description = "Set what the scroll wheel does while holding Alt", items = altMouseWheelActionItems, default = "changeVFOV")
+
     wheelDistance: bpy.props.FloatProperty(name = "Wheel Distance", description = "Set move distance when using the scroll wheel to move", \
         default = 0.5, min = -1000.0, max = 1000.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)
     scrollUpToZoomIn: bpy.props.BoolProperty(name = "Invert Direction", description = "When checked, inverts the scroll wheel direction such that scrolling up zooms in and scrolling down zooms out", default = False)
@@ -88,11 +93,12 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         row = box.row()
         row.prop(self, "wheelMoveFunction")
-
         if prefs.wheelMoveFunction == "moveZ":
             row.prop(self, "wheelDistance")
-        else:
-            row.prop(self, "scrollUpToZoomIn")
+
+        row = box.row()
+        row.prop(self, "altWheelMoveFunction")
+        row.prop(self, "scrollUpToZoomIn")
 
         row = box.row()
         row.prop(self, "adjustPivot")
