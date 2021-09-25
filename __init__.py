@@ -69,7 +69,7 @@ def registerProperties():
     if not hasattr(bpy.types.Scene, "mstrf_use_shared_scene_strafe_sensitivity"):
         bpy.types.Scene.mstrf_use_shared_scene_strafe_sensitivity = bpy.props.BoolProperty(name = "Use custom Strafe Sensitivity", description = "Click to set a custom mouse strafe sensitivity for all scenes", options = {"HIDDEN"})
     if not hasattr(bpy.types.Scene, "mstrf_strafe_sensitivity_source"):
-        bpy.types.Scene.mstrf_strafe_sensitivity_source = bpy.props.EnumProperty(name = "Source", description = "Set where to read mouse strafing sensitivity from", items = strafeSensitivitySourceOptions, default = "global", \
+        bpy.types.Scene.mstrf_strafe_sensitivity_source = bpy.props.EnumProperty(name = "Scope", description = "Set where to read mouse strafing sensitivity from", items = strafeSensitivitySourceOptions, default = "global", \
             set = setStrafeSensitivitySource, get = getStrafeSensitivitySource)
 
 def unregisterProperties():
@@ -85,6 +85,8 @@ def unregisterProperties():
         del bpy.types.Scene.mstrf_use_scene_strafe_sensitivity
     if hasattr(bpy.types.Scene, "mstrf_use_shared_scene_strafe_sensitivity"):
         del bpy.types.Scene.mstrf_use_shared_scene_strafe_sensitivity
+    if hasattr(bpy.types.Scene, "mstrf_strafe_sensitivity_source"):
+        del bpy.types.Scene.mstrf_strafe_sensitivity_source
 
 def unregister():
     mouse_strafing.unregister_keymaps()

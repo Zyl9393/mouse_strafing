@@ -1,4 +1,4 @@
-# 2.2 (TBD)
+# 2.2 (2021-09-25)
 * Camera save states now also save and load 3D View projection mode (perspective/orthographic).
 * Fixed a typo which broke panning when the invert mouse option was disabled.
 * Changing view angle with the mouse wheel now displays change on screen for a moment.
