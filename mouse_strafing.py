@@ -6,6 +6,7 @@ import blf
 from mathutils import Vector
 from mathutils import Quaternion
 import mathutils
+from .util import *
 
 from .prefs import MouseStrafingPreferences
 
@@ -63,15 +64,6 @@ class CameraStates(bpy.types.PropertyGroup):
     usedStates: bpy.props.BoolVectorProperty(size = 10, default = (False, False, False, False, False, False, False, False, False, False), options = {"HIDDEN"})
     imminentState: bpy.props.PointerProperty(type = CameraState, options = {"HIDDEN"})
     imminentSlot: bpy.props.IntProperty(options = {"HIDDEN"}, default = -1)
-
-class UnsetSceneStrafeSensitivity(bpy.types.Operator):
-    bl_idname = "view3d.unset_scene_strafe_sensitivity"
-    bl_label = "Unset Scene-specific Strafe Sensitivity"
-    bl_description = bl_label
-    def execute(self, context: bpy.types.Context):
-        prefs: MouseStrafingPreferences = context.preferences.addons["mouse_strafing"].preferences
-        context.scene.mstrf_sensitivity_strafe = prefs.sensitivityStrafeDefault # FIXME
-        return {"FINISHED"}
 
 class MouseStrafingOperator(bpy.types.Operator):
     """Strafe in the 3D View using the mouse."""
@@ -138,7 +130,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             _sv3d, self.region = getViews3D(context)
             self.considerCenterCameraView(context)
             running = True
-            self.prefs = context.preferences.addons["mouse_strafing"].preferences
+            self.prefs = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
             context.window_manager.modal_handler_add(self)
             args = (self, context)
             self.drawCallbackHandle = bpy.types.SpaceView3D.draw_handler_add(drawCallback, args, "WINDOW", "POST_PIXEL")
@@ -147,8 +139,6 @@ class MouseStrafingOperator(bpy.types.Operator):
         return {"PASS_THROUGH"}
 
     def initSaveStates(self, context: bpy.types.Context):
-        if not hasattr(bpy.types.Scene, "mstrf_camera_save_states"):
-            bpy.types.Scene.mstrf_camera_save_states = bpy.props.PointerProperty(type = CameraStates, options = {"HIDDEN"})
         states: CameraStates = context.scene.mstrf_camera_save_states
         while len(states.savedStates) < 10:
             states.savedStates.add()
@@ -272,7 +262,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 gearIndex = len(availableGears) - 1
         else:
             gearIndex = gearIndex % len(availableGears)
-        setGear(context, availableGears[gearIndex])
+        context.scene.mstrf_gear_proxy = availableGears[gearIndex]
         self.editGearTime = time.perf_counter()
 
     def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, context: bpy.types.Context, zoomOut: bool):
@@ -438,13 +428,12 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
 
     def findGear(self, context: bpy.types.Context, gears: list) -> (float, int):
-        gearSetting = getGear(context)
         smallestError = math.inf
         smallestErrorGear = 1.0
         smallestErrorGearIndex = -1
         index = 0
         for gear in gears:
-            error = abs(gear - gearSetting)
+            error = abs(gear - context.scene.mstrf_gear_proxy)
             if error <= smallestError:
                 smallestError = error
                 smallestErrorGear = gear
@@ -575,37 +564,12 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.bewareWarpDist = Vector((target[0] - event.mouse_x, target[1] - event.mouse_y)).length
 
 def getGears(context: bpy.types.Context):
-    prefs: MouseStrafingPreferences = context.preferences.addons["mouse_strafing"].preferences
+    prefs: MouseStrafingPreferences = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
     availableGears = []
     for gear in prefs.strafeGears:
         if gear != 0.0:
             availableGears.append(gear)
     return availableGears
-
-def initStrafeSensitivity(context: bpy.types.Context):
-    if not hasattr(bpy.types.Scene, "mstrf_sensitivity_strafe"):
-        prefs: MouseStrafingPreferences = context.preferences.addons["mouse_strafing"].preferences
-        bpy.types.Scene.mstrf_sensitivity_strafe = bpy.props.FloatProperty(default = prefs.sensitivityStrafeDefault, options = {"HIDDEN"}, min = 0.001, soft_min = 0.01, max = 100.0, soft_max = 10.0, step = 1, precision = 3, description = "Per-scene strafe multiplier")
-
-def initGear():
-    if not hasattr(bpy.types.Scene, "mstrf_gear"):
-        bpy.types.Scene.mstrf_gear = bpy.props.FloatProperty(default = 1.0, options = {"HIDDEN"})
-
-def getStrafeSensitivity(context: bpy.types.Context):
-    initStrafeSensitivity(context)
-    return context.scene.mstrf_sensitivity_strafe
-
-def setStrafeSensitivity(context: bpy.types.Context, value: float):
-    initStrafeSensitivity(context)
-    context.scene.mstrf_sensitivity_strafe = value
-
-def getGear(context: bpy.types.Context) -> float:
-    initGear()
-    return context.scene.mstrf_gear
-
-def setGear(context: bpy.types.Context, gear: float):
-    initGear()
-    context.scene.mstrf_gear = gear
 
 def clamp(x, min, max):
     return min if x < min else (max if x > max else x)
@@ -843,14 +807,18 @@ def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, f
     return alphaFactor
 
 def drawStrafeSensitivity(self, context: bpy.types.Context):
-    if hasattr(bpy.types.Scene, "mstrf_sensitivity_strafe"):
-        layout: bpy.types.UILayout = self.layout
-        col = layout.column()
-        subcol = col.column(align = True)
-        subcol.prop(context.scene, "mstrf_sensitivity_strafe", text = "Strafe speed")
-        subcol = subcol.split(factor = 0.4, align = True)
-        subcol.label(text = "")
-        subcol.operator("view3d.unset_scene_strafe_sensitivity", text = "Unset")
+    layout: bpy.types.UILayout = self.layout
+    col = layout.column()
+    subcol = col.column(align = True)
+    sharingScene = findStrafeSensitivitySharingScene(context)
+    prefs: MouseStrafingPreferences = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+    if sharingScene is not None:
+        subcol.prop(sharingScene, "mstrf_sensitivity_strafe", text = "Strafe Sensitivity")
+    elif context.scene.mstrf_use_scene_strafe_sensitivity:
+        subcol.prop(context.scene, "mstrf_sensitivity_strafe", text = "Strafe Sensitivity")
+    else:
+        subcol.prop(prefs, "sensitivityStrafeDefault", text = "Strafe Sensitivity")
+    subcol.prop(context.scene, "mstrf_strafe_sensitivity_source", text = "Scope")
 
 def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
     sensorWidth = 36.0

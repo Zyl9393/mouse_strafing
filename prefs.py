@@ -1,16 +1,14 @@
 import bpy
 
-def updateSensitivityStrafeDefault(self, context: bpy.types.Context):
-    bpy.types.Scene.mstrf_sensitivity_strafe = bpy.props.FloatProperty(default = self.sensitivityStrafeDefault, options = {"HIDDEN"}, min = 0.001, soft_min = 0.01, max = 100.0, soft_max = 10.0, step = 1, precision = 3, description = "Per-scene strafe multiplier")
-
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
+
     bl_idname = "mouse_strafing"
 
     sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Mouse speed multiplier when panning the 3D View", \
-        default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 2)
-    sensitivityStrafeDefault: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Default mouse speed multiplier when mouse strafing. Edit this value on a per-blend-file basis in the view panel", \
-        default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 2, update = updateSensitivityStrafeDefault)
-    strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe multipliers to cycle through with G/Shift-G. Entries set to 0 are ignored", size = 7, default = (0.1, 1.0, 5.0, 0, 0, 0, 0), min = 0.0, max = 1000.0, soft_min = 0.0, soft_max = 100.0, step = 5, precision = 2)
+        default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 3)
+    sensitivityStrafeDefault: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Default mouse speed multiplier when mouse strafing. Edit this value on a per-scene basis in the view panel", \
+        default = 1.0, min = 0.001, soft_min = 0.01, max = 100.0, soft_max = 10.0, step = 1, precision = 3)
+    strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe multipliers to cycle through with G/Shift-G. Entries set to 0 are ignored", size = 7, default = (0.08, 1.0, 3.0, 0, 0, 0, 0), min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 10.0, step = 5, precision = 2)
 
     invertMouse: bpy.props.BoolProperty(name = "Invert Mouse Vertically", description = "Invert effect of vertical mouse movement when looking around", default = True)
     invertMouseX: bpy.props.BoolProperty(name = "Invert Mouse Horizontally", description = "Invert effect of horizontal mouse movement when looking around", default = False)
@@ -69,7 +67,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     keyLoadCameraState: bpy.props.StringProperty(name = "Load Camera State", description = "Press this key and then one of the number keys [0-9] to load the camera state in that slot without the need to quickly press the number key twice (must be upper-case)", default = "T")
 
     def draw(self, context: bpy.types.Context):
-        prefs: MouseStrafingPreferences = context.preferences.addons["mouse_strafing"].preferences
+        prefs: MouseStrafingPreferences = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
 
         layout: bpy.types.UILayout = self.layout
 
