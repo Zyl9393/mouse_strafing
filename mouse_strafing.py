@@ -405,10 +405,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         panDelta = delta * self.mouseSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.85) if self.isWasding else self.prefs.sensitivityPan) * modPan
         panDeltaRappel = 0.8 * panDelta
 
-        # It is easier to make larger mouse movements sideways than back and forth. That is useful for panning the view, because there generally
-        # is a greater need to turn left/right than up/down. For strafing, forwards/backwards should not be more physically taxing than sideways movement.
-        # By doing the following, we give more oomph to back and forwards movements to make up for the shortcomings of mouse ergonomics.
-        deltaStrafe = Vector((delta[0], delta[1]*1.2))
+        deltaStrafe = Vector((delta[0], delta[1]))
         gear, _ = self.findGear(context, getGears(context))
         strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * getStrafeSensitivity(context) * gear * modStrafe
 
