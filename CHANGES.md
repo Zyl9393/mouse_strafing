@@ -6,7 +6,7 @@
 	* Works for cameras, too.
 * Changing view angle with mouse wheel is now on Alt + mouse wheel to be in line with Alt reducing pan sensitivity being an interest in high zoom situations.
 	* Using Alt to lower pan speed will now lower the pan angle further depending on zoom level.
-	* Just mouse wheel can now change mouse strafe speed on a per-blend-file basis (if set instead of moving the camera in addon preferences).
+	* Just mouse wheel can now change mouse strafe speed if set instead of moving the camera in addon preferences.
 * Can now configure up to 7 mouse strafe speed multipliers which can be cycled through by pressing G or Shift+G.
 * Holding the Relocate Pivot key to disable automatic pivot relocation will no longer cause a pivot relocation.
 * Fixed toggling automic pivot relocation by holding the Relocate Pivot key not being saved in the addon preferences when closing Blender.

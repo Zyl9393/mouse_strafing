@@ -33,7 +33,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     mouseWheelActionItems = [\
         ("moveZ", "Move forward/backwards", "Move forward/backwards", "NONE", 0), \
-        ("changeStrafeSensitivity", "Change strafe sensitivity", "Change the per-scene strafe sensitivity", "NONE", 1)]
+        ("changeStrafeSensitivity", "Change strafe sensitivity", "Change the mouse speed multiplier for mouse strafing", "NONE", 1)]
     wheelMoveFunction: bpy.props.EnumProperty(name = "Wheel", description = "Set what the scroll wheel does", items = mouseWheelActionItems, default = "moveZ")
 
     altMouseWheelActionItems = [\
