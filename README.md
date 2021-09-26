@@ -20,10 +20,7 @@ This overlay information is only displayed when changing view properties while u
 This section assumes you set the addon up as described above and have default key bindings. Any key bindings mentioned here only function while being within navigation.
 
 ## Navigation
-In the 3D View, press and hold `spacebar`. A cross will appear in the center of the screen. Click and hold the `left, right or middle mouse button` (`LMB`, `RMB`, `MMB`) to enable pannig and mouse strafing. Additionally, hold the `left and right mouse button` (`BMB`) together for a 4th movement option. Then move the mouse to strafe or turn. Which buttons do what can be configured in the addon preferences.  
-Mouse strafe sensitivity can be controlled from the view panel, where you can also configure to separately set the value only for the current file or scene instead of changing the global setting.
-
-![View panel](img/view_panel.png "View panel")
+In the 3D View, press and hold `spacebar`. A cross will appear in the center of the screen. Click and hold the `left, right or middle mouse button` (`LMB`, `RMB`, `MMB`) to enable pannig and mouse strafing. Additionally, hold the `left and right mouse button` (`BMB`) together for a 4th movement option. Then move the mouse to strafe or turn. Release `spacebar` to end navigation. Which buttons do what can be configured in the addon preferences.
 
 ## Speed adjustment
 Hold `Shift` to move at 500% speed. Hold `Ctrl` to go at 20% speed. For panning, you can reduce the sensitivity by holding `Alt`.  

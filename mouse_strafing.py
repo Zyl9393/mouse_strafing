@@ -6,7 +6,6 @@ import blf
 from mathutils import Vector
 from mathutils import Quaternion
 import mathutils
-from .util import *
 
 from .prefs import MouseStrafingPreferences
 
@@ -199,7 +198,9 @@ class MouseStrafingOperator(bpy.types.Operator):
             elif self.prefs.wheelMoveFunction == "changeStrafeSensitivity":
                 magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
                 magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
-                setStrafeSensitivity(context, nudgeValue(getStrafeSensitivity(context), magnitude, self.increasedPrecision, self.strafeSensitivityRanges))
+                prefs = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+                prefs.sensitivityStrafe = nudgeValue(prefs.sensitivityStrafe, magnitude, self.increasedPrecision, self.strafeSensitivityRanges)
+                bpy.context.preferences.use_preferences_save = True
                 self.editStrafeSensitivityTime = time.perf_counter()
         elif event.type == self.prefs.keyCycleGears:
             if event.value == "PRESS":
@@ -232,7 +233,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 if now - self.keyDownRelocatePivotTime >= 1.0:
                     self.relocatePivotLock = self.prefs.adjustPivot
                     self.prefs.adjustPivot = not self.prefs.adjustPivot
-                    context.preferences.use_preferences_save = True
+                    bpy.context.preferences.use_preferences_save = True
                     self.adjustPivotSuccess = False
                     self.keyDownRelocatePivotTime = None
             self.keyDownRelocatePivot = getKeyDown(self.keyDownRelocatePivot, event)
@@ -249,7 +250,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def cycleGear(self, context: bpy.types.Context, gearDown: bool, allowWrap: bool):
-        availableGears = getGears(context)
+        availableGears = getGears()
         gear, gearIndex = self.findGear(context, availableGears)
         if gearIndex == -1:
             return
@@ -262,7 +263,9 @@ class MouseStrafingOperator(bpy.types.Operator):
                 gearIndex = len(availableGears) - 1
         else:
             gearIndex = gearIndex % len(availableGears)
-        context.scene.mstrf_gear_proxy = availableGears[gearIndex]
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        prefs.strafeGearSelected = availableGears[gearIndex]
+        bpy.context.preferences.use_preferences_save = True
         self.editGearTime = time.perf_counter()
 
     def nudgeFov(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, context: bpy.types.Context, zoomOut: bool):
@@ -406,8 +409,9 @@ class MouseStrafingOperator(bpy.types.Operator):
         panDeltaRappel = 0.8 * panDelta
 
         deltaStrafe = Vector((delta[0], delta[1]))
-        gear, _ = self.findGear(context, getGears(context))
-        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * getStrafeSensitivity(context) * gear * modStrafe
+        gear, _ = self.findGear(context, getGears())
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * prefs.sensitivityStrafe * gear * modStrafe
 
         if action == "turnXY":
             self.pan3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
@@ -429,8 +433,9 @@ class MouseStrafingOperator(bpy.types.Operator):
         smallestErrorGear = 1.0
         smallestErrorGearIndex = -1
         index = 0
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
         for gear in gears:
-            error = abs(gear - context.scene.mstrf_gear_proxy)
+            error = abs(gear - prefs.strafeGearSelected)
             if error <= smallestError:
                 smallestError = error
                 smallestErrorGear = gear
@@ -560,8 +565,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.previousDelta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
         self.bewareWarpDist = Vector((target[0] - event.mouse_x, target[1] - event.mouse_y)).length
 
-def getGears(context: bpy.types.Context):
-    prefs: MouseStrafingPreferences = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+def getGears():
+    prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
     availableGears = []
     for gear in prefs.strafeGears:
         if gear != 0.0:
@@ -767,7 +772,8 @@ def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Cont
     uiScale = context.preferences.system.ui_scale
     blf.size(op.fontId, int(20*uiScale), 72)
     blf.color(op.fontId, 1, 1, 1, alphaFactor)
-    drawText(x, y + int(40*uiScale), f"{getStrafeSensitivity(context): .3f}", halign = "CENTER")
+    prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+    drawText(x, y + int(40*uiScale), f"{prefs.sensitivityStrafe: .3f}", halign = "CENTER")
 
 def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
     alphaFactor = drawFadeAlpha(op, op.editGearTime, 1.0, 0.5)
@@ -779,7 +785,7 @@ def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
     uiScale = context.preferences.system.ui_scale
     blf.size(op.fontId, int(20*uiScale), 72)
     blf.color(op.fontId, 1, 1, 1, alphaFactor)
-    availableGears = getGears(context)
+    availableGears = getGears()
     gearSetting, _ = op.findGear(context, availableGears)
     yoffset = ((len(availableGears) - 1) * 25) / 2
     index = 0
@@ -802,20 +808,6 @@ def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, f
     else:
         op.redrawAfterDrawCallback = True
     return alphaFactor
-
-def drawStrafeSensitivity(self, context: bpy.types.Context):
-    layout: bpy.types.UILayout = self.layout
-    col = layout.column()
-    subcol = col.column(align = True)
-    sharingScene = findStrafeSensitivitySharingScene(context)
-    prefs: MouseStrafingPreferences = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-    if sharingScene is not None:
-        subcol.prop(sharingScene, "mstrf_sensitivity_strafe", text = "Strafe Sensitivity")
-    elif context.scene.mstrf_use_scene_strafe_sensitivity:
-        subcol.prop(context.scene, "mstrf_sensitivity_strafe", text = "Strafe Sensitivity")
-    else:
-        subcol.prop(prefs, "sensitivityStrafeDefault", text = "Strafe Sensitivity")
-    subcol.prop(context.scene, "mstrf_strafe_sensitivity_source", text = "Scope")
 
 def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
     sensorWidth = 36.0

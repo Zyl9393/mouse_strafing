@@ -6,10 +6,11 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Mouse speed multiplier when panning the 3D View", \
         default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 3)
-    sensitivityStrafeDefault: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Default mouse speed multiplier when mouse strafing. Edit this value on a per-scene basis in the view panel", \
+    sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Mouse speed multiplier for mouse strafing", \
         default = 1.0, min = 0.001, soft_min = 0.01, max = 100.0, soft_max = 10.0, step = 1, precision = 3)
     strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe multipliers to cycle through with G/Shift-G. Entries set to 0 are ignored", size = 7, default = (0.08, 1.0, 3.0, 0, 0, 0, 0), min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 10.0, step = 5, precision = 2)
-
+    strafeGearSelected: bpy.props.FloatProperty(name = "Selected Gear", default = 1.0, options = {"HIDDEN"})
+    
     invertMouse: bpy.props.BoolProperty(name = "Invert Mouse Vertically", description = "Invert effect of vertical mouse movement when looking around", default = True)
     invertMouseX: bpy.props.BoolProperty(name = "Invert Mouse Horizontally", description = "Invert effect of horizontal mouse movement when looking around", default = False)
 
@@ -75,7 +76,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         row = box.row()
         row.prop(self, "sensitivityPan")
-        row.prop(self, "sensitivityStrafeDefault")
+        row.prop(self, "sensitivityStrafe")
         box.row().prop(self, "strafeGears")
         
         row = box.row()
