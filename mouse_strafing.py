@@ -311,7 +311,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     def modScalePan(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D):
         inSlowStrafe = self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
         if self.alternateControl:
-            maxMod = 0.1
+            maxMod = 0.2
             mod = maxMod / ((self.getContextualFocalLength(sv3d, rv3d) / 50) if self.alternateControl else 1)
             if mod > maxMod:
                 return maxMod
