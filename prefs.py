@@ -44,6 +44,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     wheelDistance: bpy.props.FloatProperty(name = "Wheel Distance", description = "Set move distance when using the scroll wheel to move", \
         default = 0.5, min = -1000.0, max = 1000.0, soft_min = -5.0, soft_max = 5.0, step = 1, precision = 4)
+    applySensitivityWheel: bpy.props.BoolProperty(name = "Apply Sensitivity", description = "When checked, apply strafe sensitivity to scroll wheel move distance", default = True)
     scrollUpToZoomIn: bpy.props.BoolProperty(name = "Invert Direction", description = "When checked, inverts the scroll wheel direction such that scrolling up zooms in and scrolling down zooms out", default = False)
 
     showCrosshair: bpy.props.BoolProperty(name = "Show Crosshair", description = "Show crosshair during strafe actions", default = True)
@@ -96,7 +97,9 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, "wheelMoveFunction")
         if prefs.wheelMoveFunction == "moveZ":
+            row = box.row()
             row.prop(self, "wheelDistance")
+            row.prop(self, "applySensitivityWheel")
 
         row = box.row()
         row.prop(self, "altWheelMoveFunction")

@@ -1,3 +1,6 @@
+# 2.3 (TBD)
+* Added option to apply mouse strafe sensitivity to scroll wheel move distance.
+
 # 2.2 (2021-09-26)
 * Camera save states now also save and load 3D View projection mode (perspective/orthographic).
 * Fixed a typo which broke panning when the invert mouse option was disabled.

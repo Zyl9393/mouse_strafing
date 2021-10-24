@@ -191,9 +191,9 @@ class MouseStrafingOperator(bpy.types.Operator):
             if event.alt:
                 self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
             elif self.prefs.wheelMoveFunction == "moveZ":
-                mod = self.modScaleStrafe()
+                strafeFactor = self.getStrafeFactor(context, False) if self.prefs.applySensitivityWheel else self.modScaleStrafe()
                 self.move3dView(sv3d, rv3d, \
-                    Vector((0, 0, -self.prefs.wheelDistance * mod if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * mod)), \
+                    Vector((0, 0, -self.prefs.wheelDistance * strafeFactor if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * strafeFactor)), \
                     Vector((0, 0, 0)))
             elif self.prefs.wheelMoveFunction == "changeStrafeSensitivity":
                 magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
@@ -402,16 +402,15 @@ class MouseStrafingOperator(bpy.types.Operator):
     def performMouseAction(self, context: bpy.types.Context, delta: Vector, action):
         sv3d, rv3d = getViews3D(context)
         modPan = self.modScalePan(sv3d, rv3d)
-        modStrafe = self.modScaleStrafe()
 
         # Panning feels more sensitive during WASD movement as well as rappel movement.
         panDelta = delta * self.mouseSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.85) if self.isWasding else self.prefs.sensitivityPan) * modPan
         panDeltaRappel = 0.8 * panDelta
 
         deltaStrafe = Vector((delta[0], delta[1]))
-        gear, _ = self.findGear(context, getGears())
         prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-        strafeDelta = deltaStrafe * self.mouseSanityMultiplierStrafe * prefs.sensitivityStrafe * gear * modStrafe
+        strafeFactor = self.getStrafeFactor(context, True)
+        strafeDelta = deltaStrafe * strafeFactor
 
         if action == "turnXY":
             self.pan3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
@@ -427,6 +426,14 @@ class MouseStrafingOperator(bpy.types.Operator):
             elif action == "turnXRappel":
                 self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, strafeDelta[1])))
                 self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
+
+    def getStrafeFactor(self, context: bpy.types.Context, isMouse: bool) -> float:
+        modStrafe = self.modScaleStrafe()
+        gear, _ = self.findGear(context, getGears())
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        if isMouse:
+            return self.mouseSanityMultiplierStrafe * prefs.sensitivityStrafe * gear * modStrafe
+        return prefs.sensitivityStrafe * gear * modStrafe
 
     def findGear(self, context: bpy.types.Context, gears: list) -> (float, int):
         smallestError = math.inf
