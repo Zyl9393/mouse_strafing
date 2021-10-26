@@ -418,13 +418,13 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.roll3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
         else:
             if action == "strafeXZ":
-                self.move3dView(sv3d, rv3d, Vector((strafeDelta[0], 0, -strafeDelta[1])), Vector((0, 0, 0)))
+                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], 0, strafeDelta[1] if prefs.invertStrafeZ else -strafeDelta[1])), Vector((0, 0, 0)))
             elif action == "strafeXY":
-                self.move3dView(sv3d, rv3d, Vector((strafeDelta[0], strafeDelta[1], 0)), Vector((0, 0, 0)))
+                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1], 0)), Vector((0, 0, 0)))
             elif action == "strafeXRappel":
-                self.move3dView(sv3d, rv3d, Vector((strafeDelta[0], 0, 0)), Vector((0, 0, strafeDelta[1])))
+                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], 0, 0)), Vector((0, 0, -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1])))
             elif action == "turnXRappel":
-                self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, strafeDelta[1])))
+                self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1])))
                 self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
 
     def getStrafeFactor(self, context: bpy.types.Context, isMouse: bool) -> float:

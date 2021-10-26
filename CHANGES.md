@@ -1,4 +1,5 @@
 # 2.3 (TBD)
+* Added option to invert X/Y/Z mouse strafing directions.
 * Added option to apply mouse strafe sensitivity to scroll wheel move distance.
 
 # 2.2 (2021-09-26)

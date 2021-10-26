@@ -11,8 +11,12 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe multipliers to cycle through with G/Shift-G. Entries set to 0 are ignored", size = 7, default = (0.08, 1.0, 3.0, 0, 0, 0, 0), min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 10.0, step = 5, precision = 2)
     strafeGearSelected: bpy.props.FloatProperty(name = "Selected Gear", default = 1.0, options = {"HIDDEN"})
     
-    invertMouse: bpy.props.BoolProperty(name = "Invert Mouse Vertically", description = "Invert effect of vertical mouse movement when looking around", default = True)
-    invertMouseX: bpy.props.BoolProperty(name = "Invert Mouse Horizontally", description = "Invert effect of horizontal mouse movement when looking around", default = False)
+    invertMouseX: bpy.props.BoolProperty(name = "Invert Horizontal Panning", description = "Invert effect of horizontal mouse movement when looking around", default = False)
+    invertMouse: bpy.props.BoolProperty(name = "Invert Vertical Panning", description = "Invert effect of vertical mouse movement when looking around", default = False)
+
+    invertStrafeX: bpy.props.BoolProperty(name = "Invert Strafe X", description = "Invert direction of sideways mouse strafe movement", default = False)
+    invertStrafeY: bpy.props.BoolProperty(name = "Invert Strafe Y", description = "Invert direction of upwards/downwards mouse strafe movement", default = False)
+    invertStrafeZ: bpy.props.BoolProperty(name = "Invert Strafe Z", description = "Invert direction of forwards/backwards mouse strafe movement", default = False)
 
     mouseButtonActionItems = [ \
         ("turnXY", "Look around", "Look around", "NONE", 0), \
@@ -83,6 +87,11 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, "invertMouse")
         row.prop(self, "invertMouseX")
+
+        row = box.row()
+        row.prop(self, "invertStrafeX")
+        row.prop(self, "invertStrafeY")
+        row.prop(self, "invertStrafeZ")
 
         box = layout.box()
 
