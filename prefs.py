@@ -73,10 +73,14 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     keyLoadCameraState: bpy.props.StringProperty(name = "Load Camera State", description = "Press this key and then one of the number keys [0-9] to load the camera state in that slot without the need to quickly press the number key twice (must be upper-case)", default = "T")
 
     def draw(self, context: bpy.types.Context):
-        prefs: MouseStrafingPreferences = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-
         layout: bpy.types.UILayout = self.layout
 
+        self.drawMouseMovePrefs(layout)
+        self.drawActionPrefs(layout)
+        self.drawWasdPrefs(layout)
+        self.drawKeyBindPrefs(layout)
+
+    def drawMouseMovePrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
 
         row = box.row()
@@ -93,6 +97,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row.prop(self, "invertStrafeY")
         row.prop(self, "invertStrafeZ")
 
+    def drawActionPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
 
         row = box.row()
@@ -105,7 +110,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         row = box.row()
         row.prop(self, "wheelMoveFunction")
-        if prefs.wheelMoveFunction == "moveZ":
+        if self.wheelMoveFunction == "moveZ":
             row = box.row()
             row.prop(self, "wheelDistance")
             row.prop(self, "applySensitivityWheel")
@@ -126,13 +131,14 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row.prop(self, "toggleMode")
         row.prop(self, "debug")
 
+    def drawWasdPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
 
         row = box.row()
         row.prop(self, "wasdTopSpeed")
         row.prop(self, "wasdTime")
 
-
+    def drawKeyBindPrefs(self, layout: bpy.types.UILayout):
         layout.label(text = "Key Bindings:", translate = False)
 
         box = layout.box()
