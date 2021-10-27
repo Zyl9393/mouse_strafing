@@ -35,6 +35,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     wasdTime: bpy.props.FloatProperty(name = "WASD Acceleration Time", description = "Time until top speed is reached when using WASD keys to move", \
         default = 0.2, min = 0.0, max = 4.0, soft_min = 0.0, soft_max = 1000, step = 1, precision = 2)
     wasdGlobalZ: bpy.props.BoolProperty(name = "Use Global Z", description = "When checked, makes WASD up/down movement aligned to global Z-axis instead of view Z-axis", default = False)
+    applySensitivityWasd: bpy.props.BoolProperty(name = "Apply Sensitivity", description = "When checked, apply strafe sensitivity to WASD move distance", default = True)
 
     mouseWheelActionItems = [\
         ("moveZ", "Move forward/backwards", "Move forward/backwards", "NONE", 0), \
@@ -141,6 +142,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         row = box.row()
         row.prop(self, "wasdGlobalZ")
+        row.prop(self, "applySensitivityWasd")
 
     def drawKeyBindPrefs(self, layout: bpy.types.UILayout):
         layout.label(text = "Key Bindings:", translate = False)
