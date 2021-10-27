@@ -1,5 +1,6 @@
 # 2.3 (TBD)
 * Added option to invert X/Y/Z mouse strafing directions.
+* Added option to align WASD up/down movement direction with global Z-axis instead of the view's Z-axis.
 * Added option to apply mouse strafe sensitivity to scroll wheel move distance.
 
 # 2.2 (2021-09-26)

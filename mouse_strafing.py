@@ -680,8 +680,8 @@ def fpsMove(op: MouseStrafingOperator, sv3d: bpy.types.SpaceView3D, rv3d: bpy.ty
     if op.keyDownLeft: op.move3dView(sv3d, rv3d, Vector((-delta, 0, 0)), Vector((0, 0, 0)))
     if op.keyDownBackward: op.move3dView(sv3d, rv3d, Vector((0, 0, delta)), Vector((0, 0, 0)))
     if op.keyDownRight: op.move3dView(sv3d, rv3d, Vector((delta, 0, 0)), Vector((0, 0, 0)))
-    if op.keyDownDown: op.move3dView(sv3d, rv3d, Vector((0, -delta, 0)), Vector((0, 0, 0)))
-    if op.keyDownUp: op.move3dView(sv3d, rv3d, Vector((0, delta, 0)), Vector((0, 0, 0)))
+    if op.keyDownDown: op.move3dView(sv3d, rv3d, Vector((0, 0, 0)) if op.prefs.wasdGlobalZ else Vector((0, -delta, 0)), Vector((0, 0, -delta)) if op.prefs.wasdGlobalZ else Vector((0, 0, 0)))
+    if op.keyDownUp: op.move3dView(sv3d, rv3d, Vector((0, 0, 0)) if op.prefs.wasdGlobalZ else Vector((0, delta, 0)), Vector((0, 0, delta)) if op.prefs.wasdGlobalZ else Vector((0, 0, 0)))
     return 0.0001
 
 def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context):
