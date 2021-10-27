@@ -85,7 +85,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     isWasding = False
     wasdStartTime = time.perf_counter()
     wasdPreviousTime = time.perf_counter()
-    wasdCurSpeed = 0.0
+    wasdSpeedPercentage = 0.0
     stopSignal = None
 
     imminentSaveStateTime = -9999
@@ -191,7 +191,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             if event.alt:
                 self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
             elif self.prefs.wheelMoveFunction == "moveZ":
-                strafeFactor = self.getStrafeFactor(False) if self.prefs.applySensitivityWheel else self.modScaleStrafe()
+                strafeFactor = self.getStrafeFactor(False, self.prefs.useGearsWheel)
                 self.move3dView(sv3d, rv3d, \
                     Vector((0, 0, -self.prefs.wheelDistance * strafeFactor if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * strafeFactor)), \
                     Vector((0, 0, 0)))
@@ -345,7 +345,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.keyDownUp = event.value == "PRESS" if event.type == self.prefs.keyUp else self.keyDownUp
         self.isWasding = self.keyDownForward or self.keyDownLeft or self.keyDownBackward or self.keyDownRight or self.keyDownDown or self.keyDownUp
         if not wasWasding or not self.isWasding:
-            self.wasdCurSpeed = 0.0
+            self.wasdSpeedPercentage = 0.0
         if not wasWasding and self.isWasding:
             self.wasdStartTime = time.perf_counter()
             self.wasdPreviousTime = self.wasdStartTime
@@ -409,7 +409,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
         deltaStrafe = Vector((delta[0], delta[1]))
         prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-        strafeFactor = self.getStrafeFactor(True)
+        strafeFactor = self.getStrafeFactor(True, True)
         strafeDelta = deltaStrafe * strafeFactor
 
         if action == "turnXY":
@@ -427,13 +427,15 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1])))
                 self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
 
-    def getStrafeFactor(self, isMouse: bool) -> float:
+    def getStrafeFactor(self, isForMouseMovement: bool, useGear: bool) -> float:
         modStrafe = self.modScaleStrafe()
-        gear, _ = self.findGear(getGears())
+        gear = 1
+        if useGear:
+            gear, _ = self.findGear(getGears())
         prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-        if isMouse:
+        if isForMouseMovement:
             return self.mouseSanityMultiplierStrafe * prefs.sensitivityStrafe * gear * modStrafe
-        return prefs.sensitivityStrafe * gear * modStrafe
+        return gear * modStrafe
 
     def findGear(self, gears: list) -> (float, int):
         smallestError = math.inf
@@ -522,18 +524,18 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def wasdDelta(self):
         now = time.perf_counter()
-        moveFactor = self.getStrafeFactor(False) if self.prefs.applySensitivityWasd else self.modScaleStrafe()
-        delta = moveFactor * self.wasdCurSpeed * (now - self.wasdPreviousTime)
+        moveFactor = self.getStrafeFactor(False, self.prefs.useGearsWasd)
+        delta = moveFactor * self.wasdSpeedPercentage * self.prefs.wasdTopSpeed * (now - self.wasdPreviousTime)
         self.wasdPreviousTime = now
         return delta
     
     def wasdAccelerate(self):
-        if self.wasdCurSpeed < self.prefs.wasdTopSpeed and self.prefs.wasdTime > 0.0005:
-            self.wasdCurSpeed = self.prefs.wasdTopSpeed * ((time.perf_counter() - self.wasdStartTime) / self.prefs.wasdTime)
-            if self.wasdCurSpeed > self.prefs.wasdTopSpeed:
-                self.wasdCurSpeed = self.prefs.wasdTopSpeed
+        if self.wasdSpeedPercentage < 1 and self.prefs.wasdTime > 0.0005:
+            self.wasdSpeedPercentage = ((time.perf_counter() - self.wasdStartTime) / self.prefs.wasdTime)
+            if self.wasdSpeedPercentage > 1:
+                self.wasdSpeedPercentage = 1
         else:
-            self.wasdCurSpeed = self.prefs.wasdTopSpeed
+            self.wasdSpeedPercentage = 1
 
     def exitMouseMode(self, context: bpy.types.Context):
         self.isInMouseMode = False
