@@ -3,6 +3,7 @@
 * Added option to align WASD up/down movement direction with global Z-axis instead of the view's Z-axis.
 * Added option to apply gear multiplier to WASD move speed.
 * Added option to apply gear multiplier to scroll wheel move distance.
+* Rolling the camera now respects holding `Ctrl` and `Alt` for reduced sensitivity.
 
 # 2.2 (2021-09-26)
 * Camera save states now also save and load 3D View projection mode (perspective/orthographic).

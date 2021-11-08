@@ -23,9 +23,9 @@ This section assumes you set the addon up as described above and have default ke
 In the 3D View, press and hold `spacebar`. A cross will appear in the center of the screen. Click and hold the `left, right or middle mouse button` (`LMB`, `RMB`, `MMB`) to enable pannig and mouse strafing. Additionally, hold the `left and right mouse button` (`BMB`) together for a 4th movement option. Then move the mouse to strafe or turn. Release `spacebar` to end navigation. Which buttons do what can be configured in the addon preferences.
 
 ## Speed adjustment
-Hold `Shift` to move at 500% speed. Hold `Ctrl` to go at 20% speed. For panning, you can reduce the sensitivity by holding `Alt`.  
+Hold `Shift` to move at 500% speed. Hold `Ctrl` to go at 20% speed (50% for pan and roll sensitivity). While panning, hold `Alt` for FOV-aware sensitivity reduction.  
 You can specify additional speed multipliers in the addon preferences through which you can cycle by pressing `G` or `Shift + G`.  
-You can also configure `mouse wheel` to change mouse strafe sensitivity in the addon preferences.
+You can also configure `mouse wheel` to change mouse strafe sensitivity (instead of moving the camera) in the addon preferences.
 
 ## Relocate Pivot
 While holding `spacebar`, press `C` to relocate the 3D View's pivot point to the surface which you are looking at. When backface culling is enabled, backfaces will be ignored.  

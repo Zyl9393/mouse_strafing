@@ -191,7 +191,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             if event.alt:
                 self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
             elif self.prefs.wheelMoveFunction == "moveZ":
-                strafeFactor = self.getStrafeFactor(False, self.prefs.useGearsWheel)
+                strafeFactor = self.getMovementFactor(False, self.prefs.useGearsWheel)
                 self.move3dView(sv3d, rv3d, \
                     Vector((0, 0, -self.prefs.wheelDistance * strafeFactor if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * strafeFactor)), \
                     Vector((0, 0, 0)))
@@ -249,6 +249,86 @@ class MouseStrafingOperator(bpy.types.Operator):
         context.area.tag_redraw()
         return {"RUNNING_MODAL"}
 
+    def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
+        self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
+        self.rmbDown = event.value == "PRESS" if event.type == "RIGHTMOUSE" else self.rmbDown
+        self.mmbDown = event.value == "PRESS" if event.type == "MIDDLEMOUSE" else self.mmbDown
+        enteringMouseMode = (self.lmbDown or self.rmbDown or self.mmbDown) and not self.isInMouseMode
+        leavingMouseMode = self.isInMouseMode and not (self.lmbDown or self.rmbDown or self.mmbDown)
+        self.isInMouseMode = self.lmbDown or self.rmbDown or self.mmbDown
+        if enteringMouseMode:
+            context.window.cursor_set("NONE")
+            context.area.tag_redraw()
+        elif leavingMouseMode:
+            self.exitMouseMode(context)
+            return self.considerExitOperator(context)
+        return {"RUNNING_MODAL"}
+
+    def updateKeys(self, context: bpy.types.Context, event: bpy.types.Event):
+        wasWasding = self.isWasding
+        self.keyDownForward = event.value == "PRESS" if event.type == self.prefs.keyForward else self.keyDownForward
+        self.keyDownLeft = event.value == "PRESS" if event.type == self.prefs.keyLeft else self.keyDownLeft
+        self.keyDownBackward = event.value == "PRESS" if event.type == self.prefs.keyBackward else self.keyDownBackward
+        self.keyDownRight = event.value == "PRESS" if event.type == self.prefs.keyRight else self.keyDownRight
+        self.keyDownDown = event.value == "PRESS" if event.type == self.prefs.keyDown else self.keyDownDown
+        self.keyDownUp = event.value == "PRESS" if event.type == self.prefs.keyUp else self.keyDownUp
+        self.isWasding = self.keyDownForward or self.keyDownLeft or self.keyDownBackward or self.keyDownRight or self.keyDownDown or self.keyDownUp
+        if not wasWasding or not self.isWasding:
+            self.wasdSpeedPercentage = 0.0
+        if not wasWasding and self.isWasding:
+            self.wasdStartTime = time.perf_counter()
+            self.wasdPreviousTime = self.wasdStartTime
+
+    def performMouseAction(self, context: bpy.types.Context, delta: Vector, action):
+        sv3d, rv3d = getViews3D(context)
+        modPan = self.getPanFactor(sv3d, rv3d)
+
+        # Panning feels more sensitive during WASD movement as well as rappel movement.
+        panDelta = delta * self.mouseSanityMultiplierPan * self.prefs.sensitivityPan * (0.85 if self.isWasding else 1) * modPan
+        panDeltaRappel = 0.8 * panDelta
+
+        deltaStrafe = Vector((delta[0], delta[1]))
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        strafeFactor = self.getMovementFactor(True, True)
+        strafeDelta = deltaStrafe * strafeFactor
+
+        if action == "turnXY":
+            self.pan3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
+        elif action == "roll":
+            self.roll3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
+        else:
+            if action == "strafeXZ":
+                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], 0, strafeDelta[1] if prefs.invertStrafeZ else -strafeDelta[1])), Vector((0, 0, 0)))
+            elif action == "strafeXY":
+                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1], 0)), Vector((0, 0, 0)))
+            elif action == "strafeXRappel":
+                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], 0, 0)), Vector((0, 0, -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1])))
+            elif action == "turnXRappel":
+                self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1])))
+                self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
+
+    def pan3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector):
+        viewPos, rot, _viewDir = prepareCameraTransformation(sv3d, rv3d)
+        yawRot = Quaternion(Vector((0, 0, 1)), -delta[0])
+        pitchAxis = Vector((1, 0, 0))
+        pitchAxis.rotate(rot)
+        pitchRot = Quaternion(pitchAxis, delta[1])
+        rot.rotate(pitchRot)
+        rot.rotate(yawRot)
+        applyCameraTranformation(sv3d, rv3d, viewPos, rot)
+
+    def roll3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector):
+        viewPos, rot, viewDir = prepareCameraTransformation(sv3d, rv3d)
+        roll = Quaternion(viewDir, delta[0] * self.getRollFactor())
+        rot.rotate(roll)
+        applyCameraTranformation(sv3d, rv3d, viewPos, rot)
+
+    def move3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector, globalDelta: Vector):
+        viewPos, rot, _viewDir = prepareCameraTransformation(sv3d, rv3d)
+        delta.rotate(Quaternion(rot))
+        viewPos = viewPos + delta + globalDelta
+        applyCameraTranformation(sv3d, rv3d, viewPos, rot)
+
     def cycleGear(self, context: bpy.types.Context, gearDown: bool, allowWrap: bool):
         availableGears = getGears()
         gear, gearIndex = self.findGear(availableGears)
@@ -280,12 +360,6 @@ class MouseStrafingOperator(bpy.types.Operator):
             sv3d.lens = self.nudgeLensValue(sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.altWheelMoveFunction, zoomOut)
             self.editFovTime = time.perf_counter()
 
-    def getContextualFocalLength(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> float:
-        if rv3d.view_perspective == "CAMERA" and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
-            cam = bpy.types.Camera(sv3d.camera.data)
-            return cam.lens
-        return sv3d.lens
-
     def nudgeLensValue(self, lens: float, sensorWidth: float, sensorHeight: float, method: str, zoomOut: bool) -> float:
         magnitude = 1 if zoomOut else -1
         magnitude = -magnitude if method == "changeFOV" else magnitude
@@ -295,60 +369,6 @@ class MouseStrafingOperator(bpy.types.Operator):
         elif method == "changeVFOV":
             return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorHeight), magnitude, self.increasedPrecision, self.fovRanges), sensorHeight)
         return nudgeValue(lens, magnitude, self.increasedPrecision, self.focalLengthRanges)
-
-    def modScaleStrafe(self):
-        inFastStrafe, inSlowStrafe = self.increasedMagnitude and (self.increasedMagnitude != self.increasedPrecision), self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
-        if inFastStrafe:
-            return 5
-        if inSlowStrafe and self.alternateControl:
-            return 0.02
-        if inSlowStrafe:
-            return 0.2
-        if self.alternateControl:
-            return 0.5
-        return 1
-
-    def modScalePan(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D):
-        inSlowStrafe = self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
-        if self.alternateControl:
-            maxMod = 0.2
-            mod = maxMod / ((self.getContextualFocalLength(sv3d, rv3d) / 50) if self.alternateControl else 1)
-            if mod > maxMod:
-                return maxMod
-            return mod
-        if inSlowStrafe:
-            return 0.5
-        return 1
-
-    def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
-        self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
-        self.rmbDown = event.value == "PRESS" if event.type == "RIGHTMOUSE" else self.rmbDown
-        self.mmbDown = event.value == "PRESS" if event.type == "MIDDLEMOUSE" else self.mmbDown
-        enteringMouseMode = (self.lmbDown or self.rmbDown or self.mmbDown) and not self.isInMouseMode
-        leavingMouseMode = self.isInMouseMode and not (self.lmbDown or self.rmbDown or self.mmbDown)
-        self.isInMouseMode = self.lmbDown or self.rmbDown or self.mmbDown
-        if enteringMouseMode:
-            context.window.cursor_set("NONE")
-            context.area.tag_redraw()
-        elif leavingMouseMode:
-            self.exitMouseMode(context)
-            return self.considerExitOperator(context)
-        return {"RUNNING_MODAL"}
-
-    def updateKeys(self, context: bpy.types.Context, event: bpy.types.Event):
-        wasWasding = self.isWasding
-        self.keyDownForward = event.value == "PRESS" if event.type == self.prefs.keyForward else self.keyDownForward
-        self.keyDownLeft = event.value == "PRESS" if event.type == self.prefs.keyLeft else self.keyDownLeft
-        self.keyDownBackward = event.value == "PRESS" if event.type == self.prefs.keyBackward else self.keyDownBackward
-        self.keyDownRight = event.value == "PRESS" if event.type == self.prefs.keyRight else self.keyDownRight
-        self.keyDownDown = event.value == "PRESS" if event.type == self.prefs.keyDown else self.keyDownDown
-        self.keyDownUp = event.value == "PRESS" if event.type == self.prefs.keyUp else self.keyDownUp
-        self.isWasding = self.keyDownForward or self.keyDownLeft or self.keyDownBackward or self.keyDownRight or self.keyDownDown or self.keyDownUp
-        if not wasWasding or not self.isWasding:
-            self.wasdSpeedPercentage = 0.0
-        if not wasWasding and self.isWasding:
-            self.wasdStartTime = time.perf_counter()
-            self.wasdPreviousTime = self.wasdStartTime
 
     def processSaveState(self, saveStateSlot, context: bpy.types.Context):
         self.initSaveStates(context)
@@ -399,36 +419,27 @@ class MouseStrafingOperator(bpy.types.Operator):
         r = cameraState.rot
         applyCameraTranformation(sv3d, rv3d, Vector((vP[0], vP[1], vP[2])), Quaternion((r[0], r[1], r[2], r[3])))
 
-    def performMouseAction(self, context: bpy.types.Context, delta: Vector, action):
-        sv3d, rv3d = getViews3D(context)
-        modPan = self.modScalePan(sv3d, rv3d)
+    def getPanFactor(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D):
+        mod = 1.0
+        if self.alternateControl:
+            maxMod = 0.25
+            mod = maxMod / ((self.getContextualFocalLength(sv3d, rv3d) / 50) if self.alternateControl else 1)
+            if mod > maxMod:
+                mod = maxMod
+        if self.isPrecisionRequested():
+            return mod * 0.5
+        return mod
 
-        # Panning feels more sensitive during WASD movement as well as rappel movement.
-        panDelta = delta * self.mouseSanityMultiplierPan * ((self.prefs.sensitivityPan * 0.85) if self.isWasding else self.prefs.sensitivityPan) * modPan
-        panDeltaRappel = 0.8 * panDelta
+    def getRollFactor(self):
+        mod = 1.0
+        if self.alternateControl:
+            mod = 0.25
+        if self.isPrecisionRequested():
+            return mod * 0.5
+        return mod
 
-        deltaStrafe = Vector((delta[0], delta[1]))
-        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-        strafeFactor = self.getStrafeFactor(True, True)
-        strafeDelta = deltaStrafe * strafeFactor
-
-        if action == "turnXY":
-            self.pan3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
-        elif action == "roll":
-            self.roll3dView(sv3d, rv3d, Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
-        else:
-            if action == "strafeXZ":
-                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], 0, strafeDelta[1] if prefs.invertStrafeZ else -strafeDelta[1])), Vector((0, 0, 0)))
-            elif action == "strafeXY":
-                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1], 0)), Vector((0, 0, 0)))
-            elif action == "strafeXRappel":
-                self.move3dView(sv3d, rv3d, Vector((-strafeDelta[0] if prefs.invertStrafeX else strafeDelta[0], 0, 0)), Vector((0, 0, -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1])))
-            elif action == "turnXRappel":
-                self.move3dView(sv3d, rv3d, Vector((0, 0, 0)), Vector((0, 0, -strafeDelta[1] if prefs.invertStrafeY else strafeDelta[1])))
-                self.pan3dView(sv3d, rv3d, Vector((panDeltaRappel[0], 0)))
-
-    def getStrafeFactor(self, isForMouseMovement: bool, useGear: bool) -> float:
-        modStrafe = self.modScaleStrafe()
+    def getMovementFactor(self, isForMouseMovement: bool, useGear: bool) -> float:
+        modStrafe = self.getMovementFactorModifier()
         gear = 1
         if useGear:
             gear, _ = self.findGear(getGears())
@@ -436,6 +447,24 @@ class MouseStrafingOperator(bpy.types.Operator):
         if isForMouseMovement:
             return self.mouseSanityMultiplierStrafe * prefs.sensitivityStrafe * gear * modStrafe
         return gear * modStrafe
+
+    def getMovementFactorModifier(self):
+        if self.isHigherMagnitudeRequested():
+            return 5
+        if self.isPrecisionRequested():
+            if self.alternateControl:
+                return 0.02
+            else:
+                return 0.2
+        if self.alternateControl:
+            return 0.5
+        return 1
+
+    def getContextualFocalLength(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> float:
+        if rv3d.view_perspective == "CAMERA" and sv3d.camera is not None and sv3d.camera.type == "CAMERA" and type(sv3d.camera.data) is bpy.types.Camera:
+            cam = bpy.types.Camera(sv3d.camera.data)
+            return cam.lens
+        return sv3d.lens
 
     def findGear(self, gears: list) -> (float, int):
         smallestError = math.inf
@@ -452,27 +481,11 @@ class MouseStrafingOperator(bpy.types.Operator):
             index = index + 1
         return smallestErrorGear, smallestErrorGearIndex
 
-    def pan3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector):
-        viewPos, rot, _viewDir = prepareCameraTransformation(sv3d, rv3d)
-        yawRot = Quaternion(Vector((0, 0, 1)), -delta[0])
-        pitchAxis = Vector((1, 0, 0))
-        pitchAxis.rotate(rot)
-        pitchRot = Quaternion(pitchAxis, delta[1])
-        rot.rotate(pitchRot)
-        rot.rotate(yawRot)
-        applyCameraTranformation(sv3d, rv3d, viewPos, rot)
+    def isHigherMagnitudeRequested(self) -> bool:
+        return self.increasedMagnitude and (self.increasedMagnitude != self.increasedPrecision)
 
-    def roll3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector):
-        viewPos, rot, viewDir = prepareCameraTransformation(sv3d, rv3d)
-        roll = Quaternion(viewDir, delta[0])
-        rot.rotate(roll)
-        applyCameraTranformation(sv3d, rv3d, viewPos, rot)
-
-    def move3dView(self, sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, delta: Vector, globalDelta: Vector):
-        viewPos, rot, _viewDir = prepareCameraTransformation(sv3d, rv3d)
-        delta.rotate(Quaternion(rot))
-        viewPos = viewPos + delta + globalDelta
-        applyCameraTranformation(sv3d, rv3d, viewPos, rot)
+    def isPrecisionRequested(self) -> bool:
+        return self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
 
     def adjustPivot(self, context: bpy.types.Context):
         sv3d, rv3d = getViews3D(context)
@@ -524,7 +537,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def wasdDelta(self):
         now = time.perf_counter()
-        moveFactor = self.getStrafeFactor(False, self.prefs.useGearsWasd)
+        moveFactor = self.getMovementFactor(False, self.prefs.useGearsWasd)
         delta = moveFactor * self.wasdSpeedPercentage * self.prefs.wasdTopSpeed * (now - self.wasdPreviousTime)
         self.wasdPreviousTime = now
         return delta
@@ -542,6 +555,19 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.centerMouse(context)
         context.window.cursor_set("DEFAULT")
         context.area.tag_redraw()
+
+    def centerMouse(self, context: bpy.types.Context):
+        context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
+        self.ignoreMouseEvents = 1
+
+    def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
+        if not (event.mouse_x < context.region.x + context.region.width // 4 or event.mouse_x > context.region.x + (3 * context.region.width) // 4 \
+                or event.mouse_y < context.region.y + context.region.height // 4 or event.mouse_y > context.region.y + (3 * context.region.height) // 4):
+            return
+        target = (context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
+        context.window.cursor_warp(target[0], target[1])
+        self.previousDelta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
+        self.bewareWarpDist = Vector((target[0] - event.mouse_x, target[1] - event.mouse_y)).length
 
     def considerExitOperator(self, context: bpy.types.Context):
         if (not self.prefs.toggleMode and not self.modeKeyDown and not self.isInMouseMode) or (self.prefs.toggleMode and self.modeKeyPresses > 0) or (self.inEscape):
@@ -561,19 +587,6 @@ class MouseStrafingOperator(bpy.types.Operator):
         bpy.types.SpaceView3D.draw_handler_remove(self.drawCallbackHandle, "WINDOW")
         context.area.tag_redraw()
         return {"CANCELLED"}
-
-    def centerMouse(self, context: bpy.types.Context):
-        context.window.cursor_warp(context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
-        self.ignoreMouseEvents = 1
-
-    def resetMouse(self, context: bpy.types.Context, event: bpy.types.Event):
-        if not (event.mouse_x < context.region.x + context.region.width // 4 or event.mouse_x > context.region.x + (3 * context.region.width) // 4 \
-                or event.mouse_y < context.region.y + context.region.height // 4 or event.mouse_y > context.region.y + (3 * context.region.height) // 4):
-            return
-        target = (context.region.x + context.region.width // 2, context.region.y + context.region.height // 2)
-        context.window.cursor_warp(target[0], target[1])
-        self.previousDelta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
-        self.bewareWarpDist = Vector((target[0] - event.mouse_x, target[1] - event.mouse_y)).length
 
 def getGears():
     prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
