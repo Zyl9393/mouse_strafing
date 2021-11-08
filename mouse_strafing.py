@@ -488,41 +488,21 @@ class MouseStrafingOperator(bpy.types.Operator):
         return self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
 
     def adjustPivot(self, context: bpy.types.Context):
+        hit = None
         sv3d, rv3d = getViews3D(context)
         viewPos, rot, viewDir = prepareCameraTransformation(sv3d, rv3d)
         castStart = viewPos + viewDir * sv3d.clip_start
+        castLength = sv3d.clip_end - sv3d.clip_start
         self.adjustPivotSuccess = False
-        attemptCount = 0
-        invert = False # there is no way to retrieve all hits, so we need to spam some rays back and forth.
-        minCast = viewPos + viewDir * sv3d.clip_start
-        maxCast = viewPos + viewDir * sv3d.clip_end
-        while attemptCount < 100:
-            attemptCount = attemptCount + 1
-            castDir = -viewDir if invert else viewDir
-            castLength = (minCast - castStart).dot(castDir) if invert else (maxCast - minCast).dot(castDir)
-            if not invert and castLength <= 0:
-                break
-            hit = context.scene.ray_cast(context.window.view_layer.depsgraph, castStart, castDir, distance = castLength)
-            if not hit[0]:
-                break
-            hitBackface = Vector(hit[2]).dot(viewDir) > 0
-            if hitBackface and sv3d.shading.show_backface_culling:
-                if invert:
-                    invert = not invert
-                    continue
-                nudge = castStart.length * 0.000001
-                if nudge < 0.00001:
-                    nudge = 0.00001
-                elif nudge > 0.004:
-                    nudge = 0.004
-                castStart = hit[1] + viewDir * nudge
-                invert = not invert
-                continue
+        if sv3d.shading.show_backface_culling:
+            hit = rayCastIgnoringBackfaces(context.scene, context.window.view_layer.depsgraph, castStart, viewDir, castLength)
+        else:
+            hit = context.scene.ray_cast(context.window.view_layer.depsgraph, castStart, viewDir, distance = castLength)
+        if hit is not None:
             newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
             rv3d.view_distance = (newPivotPos - viewPos).length
             applyCameraTranformation(sv3d, rv3d, viewPos, rot, True)
             self.adjustPivotSuccess = True
-            break
 
     def resetRoll(self, context: bpy.types.Context):
         sv3d, rv3d = getViews3D(context)
@@ -587,6 +567,36 @@ class MouseStrafingOperator(bpy.types.Operator):
         bpy.types.SpaceView3D.draw_handler_remove(self.drawCallbackHandle, "WINDOW")
         context.area.tag_redraw()
         return {"CANCELLED"}
+
+def rayCastIgnoringBackfaces(scene: bpy.types.Scene, depsgraph, origin: Vector, direction: Vector, maxDistance: float):
+    attemptCount = 0
+    invert = False # there is no way to retrieve all hits, so we need to spam some rays back and forth.
+    minCast = origin
+    maxCast = origin + direction * maxDistance
+    while attemptCount < 100:
+        attemptCount = attemptCount + 1
+        castDir = -direction if invert else direction
+        castLength = (minCast - origin).dot(castDir) if invert else (maxCast - minCast).dot(castDir)
+        if not invert and castLength <= 0:
+            return None
+        hit = scene.ray_cast(depsgraph, origin, castDir, distance = castLength)
+        if not hit[0]:
+            return None
+        hitBackface = Vector(hit[2]).dot(direction) > 0
+        if hitBackface:
+            if invert:
+                invert = not invert
+                continue
+            nudge = origin.length * 0.000001
+            if nudge < 0.00001:
+                nudge = 0.00001
+            elif nudge > 0.004:
+                nudge = 0.004
+            origin = hit[1] + direction * nudge
+            invert = not invert
+            continue
+        return hit
+    return None
 
 def getGears():
     prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
