@@ -833,7 +833,7 @@ def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, f
     return alphaFactor
 
 def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
-    sensorWidth = 36.0
+    sensorWidth = 72.0
     aspect = context.region.width / context.region.height
     if aspect < 1:
         sensorWidth = sensorWidth * aspect
@@ -855,10 +855,10 @@ def getSensorSize(context: bpy.types.Context, cam: bpy.types.Camera) -> (float, 
     return (sensorWidth, sensorHeight)
 
 def focalLengthToFov(focalLength: float, sensorSideLength: float) -> float:
-    return math.degrees(2 * math.atan(sensorSideLength / focalLength))
+    return math.degrees(2 * math.atan(sensorSideLength / 2 / focalLength))
 
 def fovToFocalLength(fov: float, sensorSideLength: float) -> float:
-    return sensorSideLength / math.tan(math.radians(fov)/2)
+    return sensorSideLength / 2 / math.tan(math.radians(fov)/2)
 
 def drawText(x: int, y: int, text: str, halign: str = "LEFT", valign: str = "BASELINE"):
     dims = blf.dimensions(0, text)

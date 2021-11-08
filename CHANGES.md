@@ -4,6 +4,7 @@
 * Added option to apply gear multiplier to WASD move speed.
 * Added option to apply gear multiplier to scroll wheel move distance.
 * Rolling the camera now respects holding `Ctrl` and `Alt` for reduced sensitivity.
+* Fixed angle display. (Blender uses 72mm sensor width for the 3D View instead of the standard 36mm used in Cameras for unknown reasons.)
 
 # 2.2 (2021-09-26)
 * Camera save states now also save and load 3D View projection mode (perspective/orthographic).
