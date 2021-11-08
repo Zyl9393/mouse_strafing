@@ -488,13 +488,14 @@ class MouseStrafingOperator(bpy.types.Operator):
         return self.increasedPrecision and (self.increasedPrecision != self.increasedMagnitude)
 
     def adjustPivot(self, context: bpy.types.Context):
+        self.adjustPivotSuccess = False
         hit = None
         sv3d, rv3d = getViews3D(context)
         viewPos, rot, viewDir = prepareCameraTransformation(sv3d, rv3d)
         castStart = viewPos + viewDir * sv3d.clip_start
         castLength = sv3d.clip_end - sv3d.clip_start
-        self.adjustPivotSuccess = False
-        if sv3d.shading.show_backface_culling:
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        if prefs.pivotAdjustmentIgnoreBackfaces == "always" or (prefs.pivotAdjustmentIgnoreBackfaces == "whenCulling" and sv3d.shading.show_backface_culling):
             hit = rayCastIgnoringBackfaces(context.scene, context.window.view_layer.depsgraph, castStart, viewDir, castLength)
         else:
             hit = context.scene.ray_cast(context.window.view_layer.depsgraph, castStart, viewDir, distance = castLength)

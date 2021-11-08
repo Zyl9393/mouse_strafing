@@ -56,8 +56,15 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     showCrosshair: bpy.props.BoolProperty(name = "Show Crosshair", description = "Show crosshair during strafe actions", default = True)
     adjustPivot: bpy.props.BoolProperty(name = "Automatically Relocate Pivot", description = "Automatically relocate the 3D View's "
         "pivot point (instead of manually by pressing 'C') to the surface of whatever object you are looking at while using the operator", default = False)
-    pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to the 3D View camera" , \
+    pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to the 3D View camera", \
         default = 0.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
+
+    pivotAdjustmentIgnoreBackfacesItems = [\
+        ("whenCulling", "When culling", "When adjusting the pivot, ignore backfaces if backface culling is enabled", "NONE", 0), \
+        ("always", "Always", "When adjusting the pivot, always respect backfaces", "NONE", 1), \
+        ("never", "Never", "When adjusting the pivot, always ignore backfaces", "NONE", 2)]
+    pivotAdjustmentIgnoreBackfaces: bpy.props.EnumProperty(name = "Ignore Backfaces", description = "Set when to ignore backfaces when adjusting the view pivot", items = pivotAdjustmentIgnoreBackfacesItems, default = "whenCulling")
+
     debug: bpy.props.BoolProperty(name = "Debug Mode", description = "When checked, print in the console when Blender's cursor_warp glitch is detected and countered", default = False)
     toggleMode: bpy.props.BoolProperty(name = "Toggle", description = "When checked, strafe-mode will only quit when pressing the key a second time or pressing Escape", default = False)
     leaveFOV: bpy.props.BoolProperty(name = "Leave FOV", description = "When checked, loading camera states will leave the FOV as it is", default = False)
@@ -79,6 +86,9 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         self.drawMouseMovePrefs(layout)
         self.drawActionPrefs(layout)
+        self.drawPivotAdjustmentPrefs(layout)
+        self.drawSaveStatePrefs(layout)
+        self.drawMiscPrefs(layout)
         self.drawWasdPrefs(layout)
         self.drawKeyBindPrefs(layout)
 
@@ -121,16 +131,31 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row.prop(self, "altWheelMoveFunction")
         row.prop(self, "scrollUpToZoomIn")
 
+    def drawPivotAdjustmentPrefs(self, layout: bpy.types.UILayout):
+        box = layout.box()
+
         row = box.row()
         row.prop(self, "adjustPivot")
         row.prop(self, "pivotDig")
 
         row = box.row()
-        row.prop(self, "showCrosshair")
-        row.prop(self, "leaveFOV")
+        row.prop(self, "pivotAdjustmentIgnoreBackfaces")
+
+    def drawSaveStatePrefs(self, layout: bpy.types.UILayout):
+        box = layout.box()
 
         row = box.row()
+        # TODO: Legacy mode
+        row.prop(self, "leaveFOV")
+
+    def drawMiscPrefs(self, layout: bpy.types.UILayout):
+        box = layout.box()
+
+        row = box.row()
+        row.prop(self, "showCrosshair")
         row.prop(self, "toggleMode")
+
+        row = box.row()
         row.prop(self, "debug")
 
     def drawWasdPrefs(self, layout: bpy.types.UILayout):
