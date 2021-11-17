@@ -499,7 +499,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             hit = rayCastIgnoringBackfaces(context.scene, context.window.view_layer.depsgraph, castStart, viewDir, castLength)
         else:
             hit = context.scene.ray_cast(context.window.view_layer.depsgraph, castStart, viewDir, distance = castLength)
-        if hit is not None:
+        if hit[0]:
             newPivotPos = viewPos + (Vector(hit[1]) - viewPos) * (1.0 + self.prefs.pivotDig * 0.01)
             rv3d.view_distance = (newPivotPos - viewPos).length
             applyCameraTranformation(sv3d, rv3d, viewPos, rot, True)
