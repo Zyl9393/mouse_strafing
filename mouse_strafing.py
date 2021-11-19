@@ -118,6 +118,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     redrawAfterDrawCallback = False
 
     loadCameraState = False
+    loadedCameraState = False
 
     editGearTime = -9999
     keyCycleGearsDown = False
@@ -221,6 +222,8 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.keySaveStateSlotDown[slotIndex] = self.keySaveStateDown
             if self.keySaveStateDown:
                 self.processSaveState(slotIndex, context)
+            else:
+                self.loadedCameraState = False
         elif event.type == self.prefs.keyLoadCameraState:
             if event.value == "PRESS":
                 self.loadCameraState = not self.loadCameraState
@@ -378,13 +381,16 @@ class MouseStrafingOperator(bpy.types.Operator):
                 states.imminentSlot = -1
             if states.usedStates[saveStateSlot]:
                 self.applyCameraState(context, states.savedStates[saveStateSlot])
+                self.loadedCameraState = True
             self.loadCameraState = False
         elif states.imminentSlot == saveStateSlot and self.imminentSaveStateTime > now - 1.0:
             if not states.usedStates[states.imminentSlot]:
                 self.saveCameraState(states, states.imminentSlot, states.imminentState)
             self.applyCameraState(context, states.savedStates[saveStateSlot])
+            self.loadedCameraState = True
             states.imminentSlot = -1
         else:
+            self.loadedCameraState = False
             if states.imminentSlot >= 0:
                 self.saveCameraState(states, states.imminentSlot, states.imminentState)
             sv3d, rv3d = getViews3D(context)
@@ -735,7 +741,10 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
         else:
             color = (1, 0.1, 0.05, 1)
     elif op.keySaveStateDown:
-        color = (1, 0.05, 1, 1)
+        if op.loadedCameraState:
+            color = (1, 1, 1, 1)
+        else:
+            color = (1, 0.05, 1, 1)
     elif op.loadCameraState:
         color = (0.05, 0.15, 1, 1)
     elif op.isInMouseMode:

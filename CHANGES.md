@@ -5,6 +5,7 @@
 * Added option to apply gear multiplier to scroll wheel move distance.
 * Added option to configure when pivot adjustment ignores backfaces.
 * Changed toggling of automatic pivot relocation to be triggered with `Shift + C` instead of by holding `C` for a second. (Usability)
+* Loading camera state now highlights the crosshair while the key is held.
 * Rolling the camera now respects holding `Ctrl` and `Alt` for reduced sensitivity.
 * Fixed angle display. (Blender uses 72mm sensor width for the 3D View instead of the standard 36mm used in Cameras for unknown reasons.)
 
