@@ -8,6 +8,8 @@
 * Loading camera state now highlights the crosshair while the key is held.
 * Rolling the camera now respects holding `Ctrl` and `Alt` for reduced sensitivity.
 * Fixed angle display. (Blender uses 72mm sensor width for the 3D View instead of the standard 36mm used in Cameras for unknown reasons.)
+* Fixed behavior for cameras with Axis-Angle rotation mode. Non-XYZ Euler modes are still messed up. (Does anyone actually use these?)
+* Addon will now exit the operator properly when a bug is encountered instead of repeatedly running into it forever.
 
 # 2.2 (2021-09-26)
 * Camera save states now also save and load 3D View projection mode (perspective/orthographic).

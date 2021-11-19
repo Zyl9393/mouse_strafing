@@ -149,106 +149,110 @@ class MouseStrafingOperator(bpy.types.Operator):
             rv3d.view_camera_offset = (0.0, 0.0)
 
     def modal(self, context: bpy.types.Context, event: bpy.types.Event):
-        if not running:
-            return {"CANCELLED"}
-        self.increasedMagnitude, self.increasedPrecision, self.alternateControl = event.shift, event.ctrl, event.alt
-        if event.type == kmi.type:
-            if event.value == "PRESS":
-                self.modeKeyPresses = self.modeKeyPresses + (0 if self.modeKeyDown else 1)
-                self.modeKeyDown = True
-            elif event.value == "RELEASE":
-                self.modeKeyDown = False
-            return self.considerExitOperator(context)
-        elif event.type == "ESC":
-            self.inEscape = getKeyDown(self.inEscape, event)
-            return self.considerExitOperator(context)
-        elif event.type in { "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" }:
-            return self.updateMode(context, event)
-        elif event.type in { "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" }:
-            if self.ignoreMouseEvents > 0:
-                self.ignoreMouseEvents = self.ignoreMouseEvents - 1
-                self.bewareWarpDist = None
-                return {"RUNNING_MODAL"}
-            delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
-            if self.bewareWarpDist is not None:
-                if delta.length > self.bewareWarpDist * 0.5 and delta.length > self.previousDelta.length * 2:
-                    if self.prefs.debug:
-                        print("mouse_strafing: detected cursor_warp glitch: using last mouse delta (" + str(self.previousDelta[0]) + ", " + str(self.previousDelta[1]) + ") instead of (" + str(delta[0]) + ", " + str(delta[1]) + ")")
-                    delta = self.previousDelta
-                self.bewareWarpDist = None
-            if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
-                return {"RUNNING_MODAL"}
-            if self.lmbDown and not self.rmbDown:
-                self.performMouseAction(context, delta, self.prefs.lmbAction)
-            elif not self.lmbDown and self.rmbDown:
-                self.performMouseAction(context, delta, self.prefs.rmbAction)
-            elif self.lmbDown and self.rmbDown:
-                self.performMouseAction(context, delta, self.prefs.bmbAction)
-            elif self.mmbDown:
-                self.performMouseAction(context, delta, self.prefs.mmbAction)
-            self.resetMouse(context, event)
-        elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
-            sv3d, rv3d = getViews3D(context)
-            if event.alt:
-                self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
-            elif self.prefs.wheelMoveFunction == "moveZ":
-                strafeFactor = self.getMovementFactor(False, self.prefs.useGearsWheel)
-                self.move3dView(sv3d, rv3d, \
-                    Vector((0, 0, -self.prefs.wheelDistance * strafeFactor if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * strafeFactor)), \
-                    Vector((0, 0, 0)))
-            elif self.prefs.wheelMoveFunction == "changeStrafeSensitivity":
-                magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
-                magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
-                prefs = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-                prefs.sensitivityStrafe = nudgeValue(prefs.sensitivityStrafe, magnitude, self.increasedPrecision, self.strafeSensitivityRanges)
-                bpy.context.preferences.use_preferences_save = True
-                self.editStrafeSensitivityTime = time.perf_counter()
-        elif event.type == self.prefs.keyCycleGears:
-            if event.value == "PRESS":
-                self.cycleGear(context, event.shift, not self.keyCycleGearsDown)
-            self.keyCycleGearsDown = getKeyDown(self.keyCycleGearsDown, event)
-        elif event.type in {self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp}:
-            if self.stopSignal is None:
-                self.stopSignal = [False]
-                pinnedSv3d, pinnedRv3d = getViews3D(context)
-                pinnedStopSignal = self.stopSignal
-                bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
-            self.updateKeys(context, event)
-        elif event.type in {"ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"}:
-            self.keySaveStateDown = getKeyDown(self.keySaveStateDown, event)
-            slotIndex = parseDigitString(event.type)
-            if self.keySaveStateDown and self.keySaveStateSlotDown[slotIndex]:
-                return {"RUNNING_MODAL"}
-            self.keySaveStateSlotDown[slotIndex] = self.keySaveStateDown
-            if self.keySaveStateDown:
-                self.processSaveState(slotIndex, context)
-            else:
-                self.loadedCameraState = False
-        elif event.type == self.prefs.keyLoadCameraState:
-            if event.value == "PRESS":
-                self.loadCameraState = not self.loadCameraState
-        elif event.type == self.prefs.keyRelocatePivot:
-            if event.value == "PRESS" and not self.keyDownRelocatePivot:
-                if event.shift:
-                    self.prefs.adjustPivot = not self.prefs.adjustPivot
+        try:
+            if not running:
+                return {"CANCELLED"}
+            self.increasedMagnitude, self.increasedPrecision, self.alternateControl = event.shift, event.ctrl, event.alt
+            if event.type == kmi.type:
+                if event.value == "PRESS":
+                    self.modeKeyPresses = self.modeKeyPresses + (0 if self.modeKeyDown else 1)
+                    self.modeKeyDown = True
+                elif event.value == "RELEASE":
+                    self.modeKeyDown = False
+                return self.considerExitOperator(context)
+            elif event.type == "ESC":
+                self.inEscape = getKeyDown(self.inEscape, event)
+                return self.considerExitOperator(context)
+            elif event.type in { "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" }:
+                return self.updateMode(context, event)
+            elif event.type in { "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" }:
+                if self.ignoreMouseEvents > 0:
+                    self.ignoreMouseEvents = self.ignoreMouseEvents - 1
+                    self.bewareWarpDist = None
+                    return {"RUNNING_MODAL"}
+                delta = Vector((event.mouse_x - event.mouse_prev_x, event.mouse_y - event.mouse_prev_y))
+                if self.bewareWarpDist is not None:
+                    if delta.length > self.bewareWarpDist * 0.5 and delta.length > self.previousDelta.length * 2:
+                        if self.prefs.debug:
+                            print("mouse_strafing: detected cursor_warp glitch: using last mouse delta (" + str(self.previousDelta[0]) + ", " + str(self.previousDelta[1]) + ") instead of (" + str(delta[0]) + ", " + str(delta[1]) + ")")
+                        delta = self.previousDelta
+                    self.bewareWarpDist = None
+                if not self.isInMouseMode or (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
+                    return {"RUNNING_MODAL"}
+                if self.lmbDown and not self.rmbDown:
+                    self.performMouseAction(context, delta, self.prefs.lmbAction)
+                elif not self.lmbDown and self.rmbDown:
+                    self.performMouseAction(context, delta, self.prefs.rmbAction)
+                elif self.lmbDown and self.rmbDown:
+                    self.performMouseAction(context, delta, self.prefs.bmbAction)
+                elif self.mmbDown:
+                    self.performMouseAction(context, delta, self.prefs.mmbAction)
+                self.resetMouse(context, event)
+            elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
+                sv3d, rv3d = getViews3D(context)
+                if event.alt:
+                    self.nudgeFov(sv3d, rv3d, context, (event.type == "WHEELUPMOUSE") != self.prefs.scrollUpToZoomIn)
+                elif self.prefs.wheelMoveFunction == "moveZ":
+                    strafeFactor = self.getMovementFactor(False, self.prefs.useGearsWheel)
+                    self.move3dView(sv3d, rv3d, \
+                        Vector((0, 0, -self.prefs.wheelDistance * strafeFactor if event.type == "WHEELUPMOUSE" else self.prefs.wheelDistance * strafeFactor)), \
+                        Vector((0, 0, 0)))
+                elif self.prefs.wheelMoveFunction == "changeStrafeSensitivity":
+                    magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
+                    magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
+                    prefs = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+                    prefs.sensitivityStrafe = nudgeValue(prefs.sensitivityStrafe, magnitude, self.increasedPrecision, self.strafeSensitivityRanges)
                     bpy.context.preferences.use_preferences_save = True
-                    self.relocatePivotLock = True
-                    self.adjustPivotSuccess = False
+                    self.editStrafeSensitivityTime = time.perf_counter()
+            elif event.type == self.prefs.keyCycleGears:
+                if event.value == "PRESS":
+                    self.cycleGear(context, event.shift, not self.keyCycleGearsDown)
+                self.keyCycleGearsDown = getKeyDown(self.keyCycleGearsDown, event)
+            elif event.type in {self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp}:
+                if self.stopSignal is None:
+                    self.stopSignal = [False]
+                    pinnedSv3d, pinnedRv3d = getViews3D(context)
+                    pinnedStopSignal = self.stopSignal
+                    bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
+                self.updateKeys(context, event)
+            elif event.type in {"ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"}:
+                self.keySaveStateDown = getKeyDown(self.keySaveStateDown, event)
+                slotIndex = parseDigitString(event.type)
+                if self.keySaveStateDown and self.keySaveStateSlotDown[slotIndex]:
+                    return {"RUNNING_MODAL"}
+                self.keySaveStateSlotDown[slotIndex] = self.keySaveStateDown
+                if self.keySaveStateDown:
+                    self.processSaveState(slotIndex, context)
                 else:
-                    self.relocatePivotLock = False
-                    if self.prefs.adjustPivot:
-                        self.prefs.adjustPivot = False
+                    self.loadedCameraState = False
+            elif event.type == self.prefs.keyLoadCameraState:
+                if event.value == "PRESS":
+                    self.loadCameraState = not self.loadCameraState
+            elif event.type == self.prefs.keyRelocatePivot:
+                if event.value == "PRESS" and not self.keyDownRelocatePivot:
+                    if event.shift:
+                        self.prefs.adjustPivot = not self.prefs.adjustPivot
                         bpy.context.preferences.use_preferences_save = True
-            self.keyDownRelocatePivot = getKeyDown(self.keyDownRelocatePivot, event)
-            if self.keyDownRelocatePivot and not self.prefs.adjustPivot and not self.relocatePivotLock and not event.shift:
-                self.adjustPivot(context)
-        elif event.type == self.prefs.keyResetRoll:
-            if event.value == "PRESS":
-                self.resetRoll(context)
-        else:
+                        self.relocatePivotLock = True
+                        self.adjustPivotSuccess = False
+                    else:
+                        self.relocatePivotLock = False
+                        if self.prefs.adjustPivot:
+                            self.prefs.adjustPivot = False
+                            bpy.context.preferences.use_preferences_save = True
+                self.keyDownRelocatePivot = getKeyDown(self.keyDownRelocatePivot, event)
+                if self.keyDownRelocatePivot and not self.prefs.adjustPivot and not self.relocatePivotLock and not event.shift:
+                    self.adjustPivot(context)
+            elif event.type == self.prefs.keyResetRoll:
+                if event.value == "PRESS":
+                    self.resetRoll(context)
+            else:
+                return {"RUNNING_MODAL"}
+            context.area.tag_redraw()
             return {"RUNNING_MODAL"}
-        context.area.tag_redraw()
-        return {"RUNNING_MODAL"}
+        except:
+            self.exitOperator(context)
+            raise
 
     def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
         self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
@@ -675,14 +679,15 @@ def getObjectRotationQuaternion(obj: bpy.types.Object) -> Quaternion:
     if obj.rotation_mode == "QUATERNION":
         return Quaternion(obj.rotation_quaternion)
     elif obj.rotation_mode == "AXIS_ANGLE":
-        return Quaternion(Vector((obj.rotation_axis_angle[0], obj.rotation_axis_angle[1], obj.rotation_axis_angle[2])), obj.rotation_axis_angle[3])
+        return Quaternion(Vector((obj.rotation_axis_angle[1], obj.rotation_axis_angle[2], obj.rotation_axis_angle[3])), obj.rotation_axis_angle[0])
     return mathutils.Euler(obj.rotation_euler).to_quaternion()
 
 def setObjectRotationQuaternion(obj: bpy.types.Object, rot: Quaternion):
     if obj.rotation_mode == "QUATERNION":
         obj.rotation_quaternion = rot
     elif obj.rotation_mode == "AXIS_ANGLE":
-        obj.rotation_axis_angle = rot.to_axis_angle()
+        axis, angle = rot.to_axis_angle()
+        obj.rotation_axis_angle = [angle, axis[0], axis[1], axis[2]]
     else:
         obj.rotation_euler = rot.to_euler(obj.rotation_mode)
 
