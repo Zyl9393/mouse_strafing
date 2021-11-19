@@ -226,21 +226,19 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.loadCameraState = not self.loadCameraState
         elif event.type == self.prefs.keyRelocatePivot:
             if event.value == "PRESS" and not self.keyDownRelocatePivot:
-                self.keyDownRelocatePivotTime = time.perf_counter()
-                self.relocatePivotLock = False
-            elif self.keyDownRelocatePivotTime is not None:
-                now = time.perf_counter()
-                if now - self.keyDownRelocatePivotTime >= 1.0:
-                    self.relocatePivotLock = self.prefs.adjustPivot
+                if event.shift:
                     self.prefs.adjustPivot = not self.prefs.adjustPivot
                     bpy.context.preferences.use_preferences_save = True
+                    self.relocatePivotLock = True
                     self.adjustPivotSuccess = False
-                    self.keyDownRelocatePivotTime = None
+                else:
+                    self.relocatePivotLock = False
+                    if self.prefs.adjustPivot:
+                        self.prefs.adjustPivot = False
+                        bpy.context.preferences.use_preferences_save = True
             self.keyDownRelocatePivot = getKeyDown(self.keyDownRelocatePivot, event)
-            if self.keyDownRelocatePivot and not self.prefs.adjustPivot and not self.relocatePivotLock:
+            if self.keyDownRelocatePivot and not self.prefs.adjustPivot and not self.relocatePivotLock and not event.shift:
                 self.adjustPivot(context)
-            if not self.keyDownRelocatePivot:
-                self.keyDownRelocatePivotTime = None
         elif event.type == self.prefs.keyResetRoll:
             if event.value == "PRESS":
                 self.resetRoll(context)

@@ -78,7 +78,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     keyResetRoll: bpy.props.StringProperty(name = "Reset Roll", description = "Press this key to reset camera roll (must be upper-case)", default = "R")
 
     keyCycleGears: bpy.props.StringProperty(name = "Cycle Gear", description = "Press this key to cycle through strafing gears (must be upper-case)", default = "G")
-    keyRelocatePivot: bpy.props.StringProperty(name = "Relocate Pivot", description = "Press this key to relocate camera pivot to the nearest surface in the center of the view. You can also hold it for one second to toggle Automatically Relocate Pivot on and off (must be upper-case)", default = "C")
+    keyRelocatePivot: bpy.props.StringProperty(name = "Relocate Pivot", description = "Press this key to relocate camera pivot to the nearest surface in the center of the view. You can toggle this to happen automatically on and off with Shift + this key (must be upper-case)", default = "C")
     keyLoadCameraState: bpy.props.StringProperty(name = "Load Camera State", description = "Press this key and then one of the number keys [0-9] to load the camera state in that slot without the need to quickly press the number key twice (must be upper-case)", default = "T")
 
     def draw(self, context: bpy.types.Context):
