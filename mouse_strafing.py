@@ -33,7 +33,7 @@ def getSpaceView3D(context: bpy.types.Context) -> bpy.types.SpaceView3D:
 def getViewPos(rv3d: bpy.types.RegionView3D) -> (Vector, Vector):
     pivotPos = Vector(rv3d.view_location)
     viewDir = Vector((0, 0, -1))
-    viewDir.rotate(Quaternion(rv3d.view_rotation))
+    viewDir.rotate(rv3d.view_rotation)
     return (pivotPos - viewDir * rv3d.view_distance, viewDir)
 
 def setViewPos(rv3d: bpy.types.RegionView3D, viewPos: Vector):
@@ -50,6 +50,7 @@ def getKeyDown(previousKeyState: bool, event: bpy.types.Event) -> bool:
     return True if event.value == "PRESS" else (False if event.value == "RELEASE" else previousKeyState)
 
 running = False
+drawCallbackHandle = None
 
 class CameraState(bpy.types.PropertyGroup):
     viewPos: bpy.props.FloatVectorProperty(size = 3, options = {"HIDDEN"})
@@ -99,7 +100,6 @@ class MouseStrafingOperator(bpy.types.Operator):
     prefs: MouseStrafingPreferences = None
     area = None
     region = None
-    drawCallbackHandle = None
 
     bewareWarpDist = None
     previousDelta = None
@@ -125,6 +125,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         global running
+        global drawCallbackHandle
         if not running and event.value == "PRESS":
             self.area = context.area
             _sv3d, self.region = getViews3D(context)
@@ -133,7 +134,10 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.prefs = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
             context.window_manager.modal_handler_add(self)
             args = (self, context)
-            self.drawCallbackHandle = bpy.types.SpaceView3D.draw_handler_add(drawCallback, args, "WINDOW", "POST_PIXEL")
+            if drawCallbackHandle is not None:
+                bpy.types.SpaceView3D.draw_handler_remove(drawCallbackHandle, "WINDOW")
+                drawCallbackHandle = None
+            drawCallbackHandle = bpy.types.SpaceView3D.draw_handler_add(drawCallback, args, "WINDOW", "POST_PIXEL")
             context.area.tag_redraw()
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
@@ -567,13 +571,15 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def exitOperator(self, context: bpy.types.Context):
         global running
+        global drawCallbackHandle
         running = False
         if self.stopSignal is not None:
             self.stopSignal[0] = True
             self.stopSignal = None
         if self.prefs.adjustPivot:
             self.adjustPivot(context)
-        bpy.types.SpaceView3D.draw_handler_remove(self.drawCallbackHandle, "WINDOW")
+        bpy.types.SpaceView3D.draw_handler_remove(drawCallbackHandle, "WINDOW")
+        drawCallbackHandle = None
         context.area.tag_redraw()
         return {"CANCELLED"}
 
@@ -649,18 +655,19 @@ def nudgeValue(value: float, magnitude: int, fine: bool, ranges: list) -> float:
 def prepareCameraTransformation(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> (Vector, Quaternion, Vector):
     considerViewToCamera(sv3d, rv3d)
     viewPos, _viewDir = getViewPos(rv3d)
-    viewRot = Quaternion(rv3d.view_rotation)
+    viewRot = rv3d.view_rotation
     if rv3d.view_perspective == "CAMERA" and sv3d.lock_camera and sv3d.camera is not None:
-        viewPos = sv3d.camera.location
-        viewRot = getObjectRotationQuaternion(sv3d.camera)
+        viewPos, viewRot, _viewScale = sv3d.camera.matrix_local.decompose()
     viewDir = Vector((0, 0, -1))
     viewDir.rotate(viewRot)
     return viewPos, viewRot, viewDir
 
 def applyCameraTranformation(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D, viewPos: Vector, viewRot: Quaternion, forceSetView = False):
     if not forceSetView and rv3d.view_perspective == "CAMERA" and sv3d.lock_camera and sv3d.camera is not None:
-        sv3d.camera.location = viewPos
-        setObjectRotationQuaternion(sv3d.camera, viewRot)
+        axis, angle = viewRot.to_axis_angle()
+        scale = sv3d.camera.matrix_local.to_scale()
+        mat = mathutils.Matrix.Translation(viewPos) @ mathutils.Matrix.Rotation(angle, 4, axis) @ mathutils.Matrix.Diagonal(Vector((scale[0], scale[1], scale[2], 1)))
+        sv3d.camera.matrix_local = mat
     else:
         rv3d.view_rotation = viewRot
         setViewPos(rv3d, viewPos)
@@ -672,24 +679,8 @@ def considerViewToCamera(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView
 
 def viewToCamera(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D):
     camera = sv3d.camera
-    rv3d.view_rotation = getObjectRotationQuaternion(camera)
+    rv3d.view_rotation = camera.matrix_local.to_quaternion()
     setViewPos(rv3d, camera.location)
-
-def getObjectRotationQuaternion(obj: bpy.types.Object) -> Quaternion:
-    if obj.rotation_mode == "QUATERNION":
-        return Quaternion(obj.rotation_quaternion)
-    elif obj.rotation_mode == "AXIS_ANGLE":
-        return Quaternion(Vector((obj.rotation_axis_angle[1], obj.rotation_axis_angle[2], obj.rotation_axis_angle[3])), obj.rotation_axis_angle[0])
-    return mathutils.Euler(obj.rotation_euler).to_quaternion()
-
-def setObjectRotationQuaternion(obj: bpy.types.Object, rot: Quaternion):
-    if obj.rotation_mode == "QUATERNION":
-        obj.rotation_quaternion = rot
-    elif obj.rotation_mode == "AXIS_ANGLE":
-        axis, angle = rot.to_axis_angle()
-        obj.rotation_axis_angle = [angle, axis[0], axis[1], axis[2]]
-    else:
-        obj.rotation_euler = rot.to_euler(obj.rotation_mode)
 
 def getPitchYaw(dir: Vector, up: Vector):
     pitch = 0.0 if dir[2] <= -1 else (math.pi if dir[2] >= 1 else math.acos(-dir[2]))
@@ -721,18 +712,25 @@ def fpsMove(op: MouseStrafingOperator, sv3d: bpy.types.SpaceView3D, rv3d: bpy.ty
     return 0.0001
 
 def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context):
-    if context.area != op.area:
-        return
-    sv3d, rv3d = getViews3D(context)
-    if rv3d != op.region:
-        return
-    drawCrosshair(op, context)
-    drawFovInfo(op, context)
-    drawStrafeSensitivityInfo(op, context)
-    drawGears(op, context)
-    if op.redrawAfterDrawCallback:
-        op.redrawAfterDrawCallback = False
-        bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
+    global drawCallbackHandle
+    try:
+        if context.area != op.area:
+            return
+        sv3d, rv3d = getViews3D(context)
+        if rv3d != op.region:
+            return
+        drawCrosshair(op, context)
+        drawFovInfo(op, context)
+        drawStrafeSensitivityInfo(op, context)
+        drawGears(op, context)
+        if op.redrawAfterDrawCallback:
+            op.redrawAfterDrawCallback = False
+            bpy.app.timers.register(context.area.tag_redraw, first_interval = 0)
+    except:
+        if drawCallbackHandle is not None:
+            bpy.types.SpaceView3D.draw_handler_remove(drawCallbackHandle, "WINDOW")
+            drawCallbackHandle = None
+        raise
 
 def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
     if not op.prefs.showCrosshair:
