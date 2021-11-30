@@ -593,10 +593,10 @@ def rayCastIgnoringBackfaces(scene: bpy.types.Scene, depsgraph, origin: Vector, 
         castDir = -direction if invert else direction
         castLength = (minCast - origin).dot(castDir) if invert else (maxCast - minCast).dot(castDir)
         if not invert and castLength <= 0:
-            return None
+            return rayCastMiss()
         hit = scene.ray_cast(depsgraph, origin, castDir, distance = castLength)
         if not hit[0]:
-            return None
+            return rayCastMiss()
         hitBackface = Vector(hit[2]).dot(direction) > 0
         if hitBackface:
             if invert:
@@ -611,7 +611,10 @@ def rayCastIgnoringBackfaces(scene: bpy.types.Scene, depsgraph, origin: Vector, 
             invert = not invert
             continue
         return hit
-    return None
+    return rayCastMiss()
+
+def rayCastMiss():
+    return (False, None, None, -1, None, None)
 
 def getGears():
     prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
