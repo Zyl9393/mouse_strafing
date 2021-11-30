@@ -87,9 +87,8 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         self.drawMouseMovePrefs(layout)
         self.drawActionPrefs(layout)
         self.drawPivotAdjustmentPrefs(layout)
-        self.drawSaveStatePrefs(layout)
-        self.drawMiscPrefs(layout)
         self.drawWasdPrefs(layout)
+        self.drawMiscPrefs(layout)
         self.drawKeyBindPrefs(layout)
 
     def drawMouseMovePrefs(self, layout: bpy.types.UILayout):
@@ -141,13 +140,6 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, "pivotAdjustmentIgnoreBackfaces")
 
-    def drawSaveStatePrefs(self, layout: bpy.types.UILayout):
-        box = layout.box()
-
-        row = box.row()
-        # TODO: Legacy mode
-        row.prop(self, "leaveFOV")
-
     def drawMiscPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
 
@@ -156,6 +148,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row.prop(self, "toggleMode")
 
         row = box.row()
+        row.prop(self, "leaveFOV")
         row.prop(self, "debug")
 
     def drawWasdPrefs(self, layout: bpy.types.UILayout):
@@ -163,11 +156,11 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
         row = box.row()
         row.prop(self, "wasdTopSpeed")
-        row.prop(self, "wasdTime")
+        row.prop(self, "useGearsWasd")
 
         row = box.row()
+        row.prop(self, "wasdTime")
         row.prop(self, "wasdGlobalZ")
-        row.prop(self, "useGearsWasd")
 
     def drawKeyBindPrefs(self, layout: bpy.types.UILayout):
         layout.label(text = "Key Bindings:", translate = False)
