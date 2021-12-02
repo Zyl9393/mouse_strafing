@@ -157,19 +157,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             if not running:
                 return {"CANCELLED"}
             self.increasedMagnitude, self.increasedPrecision, self.alternateControl = event.shift, event.ctrl, event.alt
-            if event.type == kmi.type:
-                if event.value == "PRESS":
-                    self.modeKeyPresses = self.modeKeyPresses + (0 if self.modeKeyDown else 1)
-                    self.modeKeyDown = True
-                elif event.value == "RELEASE":
-                    self.modeKeyDown = False
-                return self.considerExitOperator(context)
-            elif event.type == "ESC":
-                self.inEscape = getKeyDown(self.inEscape, event)
-                return self.considerExitOperator(context)
-            elif event.type in { "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" }:
-                return self.updateMode(context, event)
-            elif event.type in { "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" }:
+            if event.type in { "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" }:
                 if self.ignoreMouseEvents > 0:
                     self.ignoreMouseEvents = self.ignoreMouseEvents - 1
                     self.bewareWarpDist = None
@@ -192,6 +180,8 @@ class MouseStrafingOperator(bpy.types.Operator):
                 elif self.mmbDown:
                     self.performMouseAction(context, delta, self.prefs.mmbAction)
                 self.resetMouse(context, event)
+            elif event.type in { "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE" }:
+                return self.updateMode(context, event)
             elif event.type == "WHEELUPMOUSE" or event.type == "WHEELDOWNMOUSE":
                 sv3d, rv3d = getViews3D(context)
                 if event.alt:
@@ -250,6 +240,16 @@ class MouseStrafingOperator(bpy.types.Operator):
             elif event.type == self.prefs.keyResetRoll:
                 if event.value == "PRESS":
                     self.resetRoll(context)
+            elif event.type == kmi.type:
+                if event.value == "PRESS":
+                    self.modeKeyPresses = self.modeKeyPresses + (0 if self.modeKeyDown else 1)
+                    self.modeKeyDown = True
+                elif event.value == "RELEASE":
+                    self.modeKeyDown = False
+                return self.considerExitOperator(context)
+            elif event.type == "ESC":
+                self.inEscape = getKeyDown(self.inEscape, event)
+                return self.considerExitOperator(context)
             else:
                 return {"RUNNING_MODAL"}
             context.area.tag_redraw()
@@ -576,10 +576,10 @@ class MouseStrafingOperator(bpy.types.Operator):
         if self.stopSignal is not None:
             self.stopSignal[0] = True
             self.stopSignal = None
-        if self.prefs.adjustPivot:
-            self.adjustPivot(context)
         bpy.types.SpaceView3D.draw_handler_remove(drawCallbackHandle, "WINDOW")
         drawCallbackHandle = None
+        if self.prefs.adjustPivot:
+            self.adjustPivot(context)
         context.area.tag_redraw()
         return {"CANCELLED"}
 
@@ -712,7 +712,7 @@ def fpsMove(op: MouseStrafingOperator, sv3d: bpy.types.SpaceView3D, rv3d: bpy.ty
     if op.keyDownRight: op.move3dView(sv3d, rv3d, Vector((delta, 0, 0)), Vector((0, 0, 0)))
     if op.keyDownDown: op.move3dView(sv3d, rv3d, Vector((0, 0, 0)) if op.prefs.wasdGlobalZ else Vector((0, -delta, 0)), Vector((0, 0, -delta)) if op.prefs.wasdGlobalZ else Vector((0, 0, 0)))
     if op.keyDownUp: op.move3dView(sv3d, rv3d, Vector((0, 0, 0)) if op.prefs.wasdGlobalZ else Vector((0, delta, 0)), Vector((0, 0, delta)) if op.prefs.wasdGlobalZ else Vector((0, 0, 0)))
-    return 0.0001
+    return 0.001
 
 def drawCallback(op: MouseStrafingOperator, context: bpy.types.Context):
     global drawCallbackHandle
@@ -783,9 +783,9 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
     hFov = focalLengthToFov(focalLength, sensorSize[0])
     vFov = focalLengthToFov(focalLength, sensorSize[1])
 
-    textLens = f"     {focalLength: .3f}mm"
-    textHFov = f" {hFov: .3f}°"
-    textVFov = f" {vFov: .3f}°"
+    textLens = f"      {focalLength:.3f}mm"
+    textHFov = f"  {hFov:.3f}°"
+    textVFov = f"  {vFov:.3f}°"
 
     blf.enable(op.fontId, blf.SHADOW)
     blf.shadow(op.fontId, 3, 0, 0, 0, alphaFactor)
@@ -820,7 +820,7 @@ def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Cont
     blf.size(op.fontId, int(20*uiScale), 72)
     blf.color(op.fontId, 1, 1, 1, alphaFactor)
     prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-    drawText(x, y + int(40*uiScale), f"{prefs.sensitivityStrafe: .3f}", halign = "CENTER")
+    drawText(x, y + int(40*uiScale), f"{prefs.sensitivityStrafe:.3f}", halign = "CENTER")
 
 def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
     alphaFactor = drawFadeAlpha(op, op.editGearTime, 1.0, 0.5)
@@ -841,7 +841,7 @@ def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
             blf.color(op.fontId, 1, 1, 1, alphaFactor)
         else:
             blf.color(op.fontId, 0.75, 0.75, 0.75, alphaFactor)
-        drawText(x - (110*uiScale), y - int((yoffset-index*25)*uiScale), f"{gear: 0.3f}", halign = "CENTER", valign = "MIDDLE")
+        drawText(x - (110*uiScale), y - int((yoffset-index*25)*uiScale), f"{gear:0.3f}", halign = "CENTER", valign = "MIDDLE")
         index = index + 1
 
 def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, fadeTime: float) -> float:
