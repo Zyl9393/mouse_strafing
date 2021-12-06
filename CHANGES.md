@@ -4,6 +4,7 @@
 * Added option to apply gear multiplier to WASD move speed.
 * Added option to apply gear multiplier to scroll wheel move distance.
 * Added option to configure when pivot adjustment ignores backfaces.
+* Added support for operator key binding to coincide with mouse buttons.
 * Changed toggling of automatic pivot relocation to be triggered with `Shift + C` instead of by holding `C` for a second. (Usability)
 * Loading camera state now highlights the crosshair while the key is held.
 * Rolling the camera now respects holding `Ctrl` and `Alt` for reduced sensitivity.
