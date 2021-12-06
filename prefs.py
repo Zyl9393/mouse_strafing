@@ -24,11 +24,16 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         ("strafeXY", "Strafe left/right/up/down", "Strafe left/right/up/down", "NONE", 2), \
         ("strafeXRappel", "Strafe left/right and rappel", "Strafe left/right and rappel (move up/down world Z-axis)", "NONE", 3), \
         ("turnXRappel", "Turn left/right and rappel", "Turn left/right and rappel (move up/down world Z-axis)", "NONE", 4), \
-        ("roll", "Roll the camera", "Roll the camera (press R to reset roll)", "NONE", 5)]
+        ("roll", "Roll the camera", "Roll the camera (press R to reset roll)", "NONE", 5), \
+        ("nop", "Do nothing", "Do not use this button to change the navigation method", "NONE", 6)]
     lmbAction: bpy.props.EnumProperty(name = "LMB", description = "Set navigation method to use while only Left Mouse Button (LMB) is held down", items = mouseButtonActionItems, default = "turnXY")
     rmbAction: bpy.props.EnumProperty(name = "RMB", description = "Set navigation method to use while only Right Mouse Button (RMB) is held down", items = mouseButtonActionItems, default = "strafeXY")
     bmbAction: bpy.props.EnumProperty(name = "BMB", description = "Set navigation method to use while Both (left and right) Mouse Buttons (BMB) are held down", items = mouseButtonActionItems, default = "strafeXZ")
     mmbAction: bpy.props.EnumProperty(name = "MMB", description = "Set navigation method to use while only Middle Mouse Button (MMB) is held down", items = mouseButtonActionItems, default = "roll")
+    mb4Action: bpy.props.EnumProperty(name = "MB4", description = "Set navigation method to use while only Mouse Button 4 (MB4) is held down", items = mouseButtonActionItems, default = "strafeXY")
+    mb5Action: bpy.props.EnumProperty(name = "MB5", description = "Set navigation method to use while only Mouse Button 5 (MB5) is held down", items = mouseButtonActionItems, default = "turnXY")
+    mb6Action: bpy.props.EnumProperty(name = "MB6", description = "Set navigation method to use while only Mouse Button 6 (MB6) is held down", items = mouseButtonActionItems, default = "nop")
+    mb7Action: bpy.props.EnumProperty(name = "MB7", description = "Set navigation method to use while only Mouse Button 7 (MB7) is held down", items = mouseButtonActionItems, default = "nop")
 
     wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed when using WASD keys to move", \
         default = 8.0, min = 0.001, max = 20000, soft_min = 0.01, soft_max = 4000, step = 10, precision = 2)
@@ -114,10 +119,15 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, "lmbAction")
         row.prop(self, "rmbAction")
-
         row = box.row()
         row.prop(self, "bmbAction")
         row.prop(self, "mmbAction")
+        row = box.row()
+        row.prop(self, "mb4Action")
+        row.prop(self, "mb6Action")
+        row = box.row()
+        row.prop(self, "mb5Action")
+        row.prop(self, "mb7Action")
 
         row = box.row()
         row.prop(self, "wheelMoveFunction")

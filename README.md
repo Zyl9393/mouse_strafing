@@ -14,6 +14,7 @@ This overlay information is only displayed when changing view properties while u
 
 # Installation
 1. In Blender, find a key you want to use for *mouse strafing navigation*. In the following we assume you use `spacebar` (usually requires to unbind animation playback from it first; perhaps Toolbox (`Shift + spacebar`) as well).
+  * As an alternative, side mouse buttons may be a good fit, if available.
 2. Download the latest `mouse_strafing.zip` from the [Releases page](https://github.com/Zyl9393/mouse_strafing/releases) and install it from the Blender Addons preferences page.
 3. Check in the addon's preferences that your mapped key is not in conflict with any other keys.
 
