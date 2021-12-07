@@ -5,7 +5,7 @@
 * Added option to apply gear multiplier to scroll wheel move distance.
 * Added option to configure when pivot adjustment ignores backfaces.
 * Added support for operator key binding to coincide with mouse buttons.
-* Added support for fourth and fifth mouse button. (`MB4` and `MB5`)
+* Added support for binding any combination of two mouse buttons.
 * Changed toggling of automatic pivot relocation to be triggered with `Shift + C` instead of by holding `C` for a second. (Usability)
 * Loading camera state now highlights the crosshair while the key is held.
 * Rolling the camera now respects holding `Ctrl` and `Alt` for reduced sensitivity.

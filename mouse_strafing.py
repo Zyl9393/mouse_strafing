@@ -8,6 +8,7 @@ from mathutils import Quaternion
 import mathutils
 
 from .prefs import MouseStrafingPreferences
+from .prefs import NavigationMouseButtonBinding
 
 def getViews3D(context: bpy.types.Context) -> (bpy.types.SpaceView3D, bpy.types.RegionView3D):
     sv3d = getSpaceView3D(context)
@@ -72,12 +73,12 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_options = { "BLOCKING" }
 
     __slots__ = 'mouseSanityMultiplierPan', 'mouseSanityMultiplierStrafe', 'increasedMagnitude', 'increasedPrecision', 'alternateControl', \
-        'lmbDown', 'rmbDown', 'mmbDown', 'mb4Down', 'mb5Down', 'mb6Down', 'mb7Down', 'isInMouseMode', 'modeKeyDown', 'modeKeyPresses', 'inEscape', 'keyDownForward', 'keyDownLeft', \
+        'lmbDown', 'rmbDown', 'mmbDown', 'mb4Down', 'mb5Down', 'mb6Down', 'mb7Down', 'isInMouseAction', 'modeKeyDown', 'modeKeyPresses', 'inEscape', 'keyDownForward', 'keyDownLeft', \
         'keyDownBackward', 'keyDownRight', 'keyDownDown', 'keyDownUp', 'isWasding', 'wasdStartTime', 'wasdPreviousTime', 'wasdSpeedPercentage', \
         'stopSignal', 'imminentSaveStateTime', 'keySaveStateDown', 'keySaveStateSlotDown', 'keyDownRelocatePivot', 'relocatePivotLock', 'adjustPivotSuccess', \
         'prefs', 'bewareWarpDist', 'previousDelta', 'ignoreMouseEvents', 'editFovTime', 'focalLengthRanges', 'fovRanges', 'strafeSensitivityRanges', \
         'editStrafeSensitivityTime', 'redrawAfterDrawCallback', 'loadCameraState', 'loadedCameraState', 'editGearTime', 'keyCycleGearsDown', \
-        'lmbFunc', 'rmbFunc', 'mmbFunc', 'bmbFunc', 'mb4Func', 'mb5Func', 'mb6Func', 'mb7Func', 'area', 'sv3d', 'rv3d', 'activationKey'
+        'area', 'sv3d', 'rv3d', 'activationKey'
 
     def initFields(self, context: bpy.types.Context, event: bpy.types.Event):
         self.activationKey = event.type
@@ -86,7 +87,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
         self.increasedMagnitude, self.increasedPrecision, self.alternateControl = False, False, False
 
-        self.isInMouseMode = False
+        self.isInMouseAction = False
         self.modeKeyDown = True
         self.modeKeyPresses = 0
         self.inEscape = False
@@ -142,15 +143,6 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.mb6Down = False
         self.mb7Down = False
         self.updateMode(context, event)
-
-        self.lmbFunc = self.getActionFunc(self.prefs.lmbAction)
-        self.rmbFunc = self.getActionFunc(self.prefs.rmbAction)
-        self.mmbFunc = self.getActionFunc(self.prefs.mmbAction)
-        self.bmbFunc = self.getActionFunc(self.prefs.bmbAction)
-        self.mb4Func = self.getActionFunc(self.prefs.mb4Action)
-        self.mb5Func = self.getActionFunc(self.prefs.mb5Action)
-        self.mb6Func = self.getActionFunc(self.prefs.mb6Action)
-        self.mb7Func = self.getActionFunc(self.prefs.mb7Action)
 
     def getActionFunc(self, action):
         if action == "turnXY":
@@ -246,15 +238,10 @@ class MouseStrafingOperator(bpy.types.Operator):
                             print("mouse_strafing: detected cursor_warp glitch: using last mouse delta (" + str(self.previousDelta[0]) + ", " + str(self.previousDelta[1]) + ") instead of (" + str(delta[0]) + ", " + str(delta[1]) + ")")
                         delta = self.previousDelta
                     self.bewareWarpDist = None
-                if self.isInMouseMode and not (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
-                    if self.lmbDown and not self.rmbDown:
-                        self.lmbFunc(delta)
-                    elif not self.lmbDown and self.rmbDown:
-                        self.rmbFunc(delta)
-                    elif self.lmbDown and self.rmbDown:
-                        self.bmbFunc(delta)
-                    elif self.mmbDown:
-                        self.mmbFunc(delta)
+                if self.isInMouseAction and not (event.mouse_x == event.mouse_prev_x and event.mouse_y == event.mouse_prev_y):
+                    binding = self.getSatisfiedBinding()
+                    if binding is not None:
+                        self.getActionFunc(binding.action)(delta)
                     self.resetMouse(context, event)
             elif event.type in { "LEFTMOUSE", "RIGHTMOUSE", "MIDDLEMOUSE", "BUTTON4MOUSE", "BUTTON5MOUSE", "BUTTON6MOUSE", "BUTTON7MOUSE" }:
                 return self.updateMode(context, event)
@@ -324,6 +311,24 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.exitOperator(context, True)
             raise
 
+    def getSatisfiedBinding(self) -> NavigationMouseButtonBinding:
+        downButtons = []
+        for button in ["lmb", "rmb", "mmb", "mb4", "mb5", "mb6", "mb7"]:
+            if self.isButtonDown(button):
+                downButtons.append(button)
+        if len(downButtons) > 2 or len(downButtons) == 0:
+            return None
+        for binding in self.prefs.buttonBindings:
+            if binding.button1 in downButtons and ((binding.button2 in downButtons and (binding.button2 != binding.button1 or len(downButtons) == 1)) or (binding.button2 == "omit" and len(downButtons) == 1)):
+                return binding
+        return None
+
+    def isButtonDown(self, button: str) -> bool:
+        return {"lmb": self.lmbDown, "rmb": self.rmbDown, "mmb": self.mmbDown, "mb4": self.mb4Down, "mb5": self.mb5Down, "mb6": self.mb6Down, "mb7": self.mb7Down}[button]
+
+    def isAnyButtonDown(self) -> bool:
+        return self.lmbDown or self.rmbDown or self.mmbDown or self.mb4Down or self.mb5Down or self.mb6Down or self.mb7Down
+
     def updateMode(self, context: bpy.types.Context, event: bpy.types.Event):
         self.lmbDown = event.value == "PRESS" if event.type == "LEFTMOUSE" else self.lmbDown
         self.rmbDown = event.value == "PRESS" if event.type == "RIGHTMOUSE" else self.rmbDown
@@ -332,22 +337,16 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.mb5Down = event.value == "PRESS" if event.type == "BUTTON5MOUSE" else self.mb5Down
         self.mb6Down = event.value == "PRESS" if event.type == "BUTTON6MOUSE" else self.mb6Down
         self.mb7Down = event.value == "PRESS" if event.type == "BUTTON7MOUSE" else self.mb7Down
-        isAnyActionButtonDown = (self.lmbDown and self.prefs.lmbAction != "nop") \
-            or (self.rmbDown and self.prefs.rmbAction != "nop") \
-            or (self.mmbDown and self.prefs.mmbAction != "nop") \
-            or (self.mb4Down and self.prefs.mb4Action != "nop") \
-            or (self.mb5Down and self.prefs.mb5Action != "nop") \
-            or (self.mb6Down and self.prefs.mb6Action != "nop") \
-            or (self.mb7Down and self.prefs.mb7Action != "nop")
-        enteringMouseMode = isAnyActionButtonDown and not self.isInMouseMode
-        leavingMouseMode = self.isInMouseMode and not isAnyActionButtonDown
+        isAnyButtonDown = self.isAnyButtonDown()
+        enteringMouseMode = isAnyButtonDown and not self.isInMouseAction
+        leavingMouseMode = self.isInMouseAction and not isAnyButtonDown
         if enteringMouseMode:
-            self.isInMouseMode = True
+            self.isInMouseAction = True
             context.window.cursor_set("NONE")
-            context.area.tag_redraw()
         elif leavingMouseMode:
             self.exitMouseMode(context)
             return self.considerExitOperator(context)
+        context.area.tag_redraw()
         return {"RUNNING_MODAL"}
 
     def updateKeys(self, context: bpy.types.Context, event: bpy.types.Event):
@@ -594,7 +593,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             self.wasdSpeedPercentage = 1
 
     def exitMouseMode(self, context: bpy.types.Context):
-        self.isInMouseMode = False
+        self.isInMouseAction = False
         self.centerMouse(context)
         context.window.cursor_set("DEFAULT")
 
@@ -617,12 +616,12 @@ class MouseStrafingOperator(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def shouldExitOperator(self):
-        return (not self.prefs.toggleMode and not self.modeKeyDown and not self.isInMouseMode) or (self.prefs.toggleMode and self.modeKeyPresses > 0) or (self.inEscape)
+        return (not self.prefs.toggleMode and not self.modeKeyDown and not self.isInMouseAction) or (self.prefs.toggleMode and self.modeKeyPresses > 0) or (self.inEscape)
 
     def exitOperator(self, context: bpy.types.Context, forceResetMouse: bool = False):
         global running
         global drawCallbackHandle
-        if self.isInMouseMode or forceResetMouse:
+        if self.isInMouseAction or forceResetMouse:
             self.exitMouseMode(context)
         running = False
         if self.stopSignal is not None:
@@ -795,7 +794,7 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
             color = (1, 0.05, 1, 1)
     elif op.loadCameraState:
         color = (0.05, 0.15, 1, 1)
-    elif op.isInMouseMode:
+    elif op.getSatisfiedBinding() is not None:
         if not op.prefs.showCrosshair:
             return
         color = (1, 1, 1, 1)
@@ -878,7 +877,7 @@ def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
     yoffset = ((len(availableGears) - 1) * 25) / 2
     index = 0
     for gear in availableGears:
-        if gear == self.prefs.strafeGearSelected:
+        if gear == op.prefs.strafeGearSelected:
             blf.color(0, 1, 1, 1, alphaFactor)
         else:
             blf.color(0, 0.75, 0.75, 0.75, alphaFactor)

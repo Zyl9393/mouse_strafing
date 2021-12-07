@@ -1,8 +1,59 @@
 import bpy
 
-class MouseStrafingPreferences(bpy.types.AddonPreferences):
+class NavigationMouseButtonBinding(bpy.types.PropertyGroup):
 
+    def markPreferencesForSaving(self, context):
+        bpy.context.preferences.use_preferences_save = True
+
+    mouseButtonItems = [ \
+        ("lmb", "LMB", "Left Mouse Button", "NONE", 1), \
+        ("rmb", "RMB", "Right Mouse Button", "NONE", 2), \
+        ("mmb", "MMB", "Middle Mouse Button", "NONE", 3), \
+        ("mb4", "MB4", "Mouse Button 4", "NONE", 4), \
+        ("mb5", "MB5", "Mouse Button 5", "NONE", 5), \
+        ("mb6", "MB6", "Mouse Button 6", "NONE", 6), \
+        ("mb7", "MB7", "Mouse Button 7", "NONE", 7)]
+    mouseButtonItemsOmitable = [("omit", "-", "Omit: make this binding for a single mouse button instead of a combination of two", "NONE", 0)] + mouseButtonItems
+    button1: bpy.props.EnumProperty(name = "Button 1", description = "Button to press to activate this binding", items = mouseButtonItems, default = "lmb", options = {"HIDDEN"}, update = markPreferencesForSaving)
+    button2: bpy.props.EnumProperty(name = "Button 2", description = "Button which also has to be held for this binding", items = mouseButtonItemsOmitable, default = "omit", options = {"HIDDEN"}, update = markPreferencesForSaving)
+
+    navigationActionItems = [ \
+        ("turnXY", "Look around", "Look around (Essential)", "NONE", 0), \
+        ("strafeXZ", "Strafe left/right/forward/backwards", "Strafe left/right/forward/backwards (Essential)", "NONE", 1), \
+        ("strafeXY", "Strafe left/right/up/down", "Strafe left/right/up/down (Essential)", "NONE", 2), \
+        ("strafeXRappel", "Strafe left/right and rappel", "Strafe left/right and rappel (move up/down world Z-axis)", "NONE", 3), \
+        ("turnXRappel", "Turn left/right and rappel", "Turn left/right and rappel (move up/down world Z-axis)", "NONE", 4), \
+        ("roll", "Roll the camera", "Roll the camera (press R to reset roll)", "NONE", 5)]
+    action: bpy.props.EnumProperty(name = "Action", description = "Set navigation method to use while holding specified buttons", items = navigationActionItems, default = "turnXY", update = markPreferencesForSaving)
+
+    def equals(self, other):
+        return other is not None and ((self.button1 == other.button1 and self.button2 == other.button2) or (self.button1 == other.button2 and self.button2 == other.button1)) and self.action == other.action
+
+class AddButtonBinding(bpy.types.Operator):
+    """Add Mouse Button Binding"""
+    bl_idname = "view3d.mouse_strafing_add_button_binding"
+    bl_label = "Add Mouse Button Binding"
+    def invoke(self, context, event):
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        prefs.buttonBindings.add()
+        bpy.context.preferences.use_preferences_save = True
+        return {"FINISHED"}
+
+class RemoveButtonBinding(bpy.types.Operator):
+    """Remove Mouse Button Binding"""
+    bl_idname = "view3d.mouse_strafing_remove_button_binding"
+    bl_label = "Remove Mouse Button Binding"
+    index: bpy.props.IntProperty()
+    def invoke(self, context, event):
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        prefs.buttonBindings.remove(self.index)
+        bpy.context.preferences.use_preferences_save = True
+        return {"FINISHED"}
+
+class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
+
+    buttonBindings: bpy.props.CollectionProperty(type = NavigationMouseButtonBinding, name = "Mouse button bindings", description = "Specify which mouse button or mouse button combination engages which navigation behavior", options = {"HIDDEN"})
 
     sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Mouse speed multiplier when panning the 3D View", \
         default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 3)
@@ -18,23 +69,6 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     invertStrafeY: bpy.props.BoolProperty(name = "Invert Strafe Y", description = "Invert direction of upwards/downwards mouse strafe movement", default = False)
     invertStrafeZ: bpy.props.BoolProperty(name = "Invert Strafe Z", description = "Invert direction of forwards/backwards mouse strafe movement", default = False)
 
-    mouseButtonActionItems = [ \
-        ("turnXY", "Look around", "Look around", "NONE", 0), \
-        ("strafeXZ", "Strafe left/right/forward/backwards", "Strafe left/right/forward/backwards", "NONE", 1), \
-        ("strafeXY", "Strafe left/right/up/down", "Strafe left/right/up/down", "NONE", 2), \
-        ("strafeXRappel", "Strafe left/right and rappel", "Strafe left/right and rappel (move up/down world Z-axis)", "NONE", 3), \
-        ("turnXRappel", "Turn left/right and rappel", "Turn left/right and rappel (move up/down world Z-axis)", "NONE", 4), \
-        ("roll", "Roll the camera", "Roll the camera (press R to reset roll)", "NONE", 5), \
-        ("nop", "Do nothing", "Do not use this button to change the navigation method", "NONE", 6)]
-    lmbAction: bpy.props.EnumProperty(name = "LMB", description = "Set navigation method to use while only Left Mouse Button (LMB) is held down", items = mouseButtonActionItems, default = "turnXY")
-    rmbAction: bpy.props.EnumProperty(name = "RMB", description = "Set navigation method to use while only Right Mouse Button (RMB) is held down", items = mouseButtonActionItems, default = "strafeXY")
-    bmbAction: bpy.props.EnumProperty(name = "BMB", description = "Set navigation method to use while Both (left and right) Mouse Buttons (BMB) are held down", items = mouseButtonActionItems, default = "strafeXZ")
-    mmbAction: bpy.props.EnumProperty(name = "MMB", description = "Set navigation method to use while only Middle Mouse Button (MMB) is held down", items = mouseButtonActionItems, default = "roll")
-    mb4Action: bpy.props.EnumProperty(name = "MB4", description = "Set navigation method to use while only Mouse Button 4 (MB4) is held down", items = mouseButtonActionItems, default = "strafeXY")
-    mb5Action: bpy.props.EnumProperty(name = "MB5", description = "Set navigation method to use while only Mouse Button 5 (MB5) is held down", items = mouseButtonActionItems, default = "turnXY")
-    mb6Action: bpy.props.EnumProperty(name = "MB6", description = "Set navigation method to use while only Mouse Button 6 (MB6) is held down", items = mouseButtonActionItems, default = "nop")
-    mb7Action: bpy.props.EnumProperty(name = "MB7", description = "Set navigation method to use while only Mouse Button 7 (MB7) is held down", items = mouseButtonActionItems, default = "nop")
-
     wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed when using WASD keys to move", \
         default = 8.0, min = 0.001, max = 20000, soft_min = 0.01, soft_max = 4000, step = 10, precision = 2)
     wasdTime: bpy.props.FloatProperty(name = "WASD Acceleration Time", description = "Time until top speed is reached when using WASD keys to move", \
@@ -42,12 +76,12 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     wasdGlobalZ: bpy.props.BoolProperty(name = "Use Global Z", description = "When checked, makes WASD up/down movement aligned to global Z-axis instead of view Z-axis", default = False)
     useGearsWasd: bpy.props.BoolProperty(name = "Apply Gear to WASD Speed", description = "When checked, apply gear strafe speed multiplier to WASD move distance, too", default = True)
 
-    mouseWheelActionItems = [\
+    mouseWheelActionItems = [ \
         ("moveZ", "Move forward/backwards", "Move forward/backwards", "NONE", 0), \
         ("changeStrafeSensitivity", "Change strafe sensitivity", "Change the mouse speed multiplier for mouse strafing", "NONE", 1)]
     wheelMoveFunction: bpy.props.EnumProperty(name = "Wheel", description = "Set what the scroll wheel does", items = mouseWheelActionItems, default = "moveZ")
 
-    altMouseWheelActionItems = [\
+    altMouseWheelActionItems = [ \
         ("changeFOV", "Change Focal Length", "Change the field of view (FOV) by controlling the distance of the lens to the camera sensor", "NONE", 0), \
         ("changeHFOV", "Change Horizontal FOV", "Change the field of view (FOV) by controlling the horizontal view angle", "NONE", 1), \
         ("changeVFOV", "Change Vertical FOV", "Change the field of view (FOV) by controlling the vertical view angle", "NONE", 2)]
@@ -64,7 +98,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to the 3D View camera", \
         default = 0.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
 
-    pivotAdjustmentIgnoreBackfacesItems = [\
+    pivotAdjustmentIgnoreBackfacesItems = [ \
         ("whenCulling", "When culling", "When adjusting the pivot, ignore backfaces if backface culling is enabled", "NONE", 0), \
         ("always", "Always", "When adjusting the pivot, always respect backfaces", "NONE", 1), \
         ("never", "Never", "When adjusting the pivot, always ignore backfaces", "NONE", 2)]
@@ -89,12 +123,30 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     def draw(self, context: bpy.types.Context):
         layout: bpy.types.UILayout = self.layout
 
+        self.drawButtonBindings(layout)
         self.drawMouseMovePrefs(layout)
         self.drawActionPrefs(layout)
         self.drawPivotAdjustmentPrefs(layout)
         self.drawWasdPrefs(layout)
         self.drawMiscPrefs(layout)
         self.drawKeyBindPrefs(layout)
+
+    def drawButtonBindings(self, layout):
+        box = layout.box()
+
+        i = 0
+        for binding in self.buttonBindings:
+            row = box.row().split(factor = 0.25)
+            buttonColumnRow = row.column().row()
+            buttonColumnRow.prop(binding, "button1", text = "")
+            buttonColumnRow.prop(binding, "button2", text = "")
+            row = row.column().row()
+            row.prop(binding, "action", text = "")
+            row.operator("view3d.mouse_strafing_remove_button_binding", icon = "REMOVE", text = "").index = i
+            i += 1
+        if len(self.buttonBindings) < 10:
+            row = box.row()
+            row.operator("view3d.mouse_strafing_add_button_binding")
 
     def drawMouseMovePrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
@@ -115,19 +167,6 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     def drawActionPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
-
-        row = box.row()
-        row.prop(self, "lmbAction")
-        row.prop(self, "rmbAction")
-        row = box.row()
-        row.prop(self, "bmbAction")
-        row.prop(self, "mmbAction")
-        row = box.row()
-        row.prop(self, "mb4Action")
-        row.prop(self, "mb6Action")
-        row = box.row()
-        row.prop(self, "mb5Action")
-        row.prop(self, "mb7Action")
 
         row = box.row()
         row.prop(self, "wheelMoveFunction")
@@ -173,8 +212,6 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row.prop(self, "wasdGlobalZ")
 
     def drawKeyBindPrefs(self, layout: bpy.types.UILayout):
-        layout.label(text = "Key Bindings:", translate = False)
-
         box = layout.box()
         box.row().prop(self, "keyForward")
         box.row().prop(self, "keyBackward")

@@ -19,18 +19,47 @@ def unregisterProperties():
     if hasattr(bpy.types.Scene, "mstrf_camera_save_states"):
         del bpy.types.Scene.mstrf_camera_save_states
 
+def initAddonPreferences():
+    p: MouseStrafingPreferences = bpy.context.preferences.addons[prefs.MouseStrafingPreferences.bl_idname].preferences
+    if len(p.buttonBindings) == 0:
+        p.buttonBindings.clear()
+        b = p.buttonBindings.add()
+        b.button1, b.button2, b.action = "lmb", "omit", "turnXY"
+        b = p.buttonBindings.add()
+        b.button1, b.button2, b.action = "rmb", "omit", "strafeXY"
+        b = p.buttonBindings.add()
+        b.button1, b.button2, b.action = "lmb", "rmb", "strafeXZ"
+        b = p.buttonBindings.add()
+        b.button1, b.button2, b.action = "mmb", "omit", "roll"
+        bpy.context.preferences.use_preferences_save = True
+
 def unregister():
     mouse_strafing.unregister_keymaps()
     unregisterProperties()
+
     bpy.utils.unregister_class(mouse_strafing.MouseStrafingOperator)
+
     bpy.utils.unregister_class(prefs.MouseStrafingPreferences)
     bpy.utils.unregister_class(mouse_strafing.CameraStates)
     bpy.utils.unregister_class(mouse_strafing.CameraState)
 
+    bpy.utils.unregister_class(prefs.RemoveButtonBinding)
+    bpy.utils.unregister_class(prefs.AddButtonBinding)
+
+    bpy.utils.unregister_class(prefs.NavigationMouseButtonBinding)
+
 def register():
+    bpy.utils.register_class(prefs.NavigationMouseButtonBinding)
+
+    bpy.utils.register_class(prefs.AddButtonBinding)
+    bpy.utils.register_class(prefs.RemoveButtonBinding)
+
     bpy.utils.register_class(mouse_strafing.CameraState)
     bpy.utils.register_class(mouse_strafing.CameraStates)
     bpy.utils.register_class(prefs.MouseStrafingPreferences)
+
     bpy.utils.register_class(mouse_strafing.MouseStrafingOperator)
+
     registerProperties()
+    initAddonPreferences()
     mouse_strafing.register_keymaps()
