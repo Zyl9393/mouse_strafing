@@ -144,7 +144,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
             row.prop(binding, "action", text = "")
             row.operator("view3d.mouse_strafing_remove_button_binding", icon = "REMOVE", text = "").index = i
             i += 1
-        if len(self.buttonBindings) < 10:
+        if len(self.buttonBindings) < 20:
             row = box.row()
             row.operator("view3d.mouse_strafing_add_button_binding")
 
