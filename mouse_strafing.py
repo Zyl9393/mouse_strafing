@@ -72,76 +72,69 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_label = "Mouse Strafing"
     bl_options = { "BLOCKING" }
 
-    __slots__ = 'mouseSanityMultiplierPan', 'mouseSanityMultiplierStrafe', 'increasedMagnitude', 'increasedPrecision', 'alternateControl', \
-        'lmbDown', 'rmbDown', 'mmbDown', 'mb4Down', 'mb5Down', 'mb6Down', 'mb7Down', 'isInMouseAction', 'modeKeyDown', 'modeKeyPresses', 'inEscape', 'keyDownForward', 'keyDownLeft', \
-        'keyDownBackward', 'keyDownRight', 'keyDownDown', 'keyDownUp', 'isWasding', 'wasdStartTime', 'wasdPreviousTime', 'wasdSpeedPercentage', \
-        'stopSignal', 'imminentSaveStateTime', 'keySaveStateDown', 'keySaveStateSlotDown', 'keyDownRelocatePivot', 'relocatePivotLock', 'adjustPivotSuccess', \
-        'prefs', 'bewareWarpDist', 'previousDelta', 'ignoreMouseEvents', 'editFovTime', 'focalLengthRanges', 'fovRanges', 'strafeSensitivityRanges', \
-        'editStrafeSensitivityTime', 'redrawAfterDrawCallback', 'loadCameraState', 'loadedCameraState', 'editGearTime', 'keyCycleGearsDown', \
-        'area', 'sv3d', 'rv3d', 'activationKey'
+    __slots__ = 'mouseSanityMultiplierPan', 'mouseSanityMultiplierStrafe', 'strafeSensitivityRanges', 'focalLengthRanges', 'fovRanges', \
+        'operatorKey', 'operatorKeyDown', 'operatorKeyPresses', 'inEscape', 'stopSignal', 'isInMouseAction', \
+        'increasedMagnitude', 'increasedPrecision', 'alternateControl', \
+        'lmbDown', 'rmbDown', 'mmbDown', 'mb4Down', 'mb5Down', 'mb6Down', 'mb7Down', \
+        'keyDownForward', 'keyDownLeft', 'keyDownBackward', 'keyDownRight', 'keyDownDown', 'keyDownUp', \
+        'isWasding', 'wasdStartTime', 'wasdPreviousTime', 'wasdSpeedPercentage', \
+        'keySaveStateDown', 'keySaveStateSlotDown', 'loadCameraState', 'loadedCameraState', 'imminentSaveStateTime',  \
+        'keyDownRelocatePivot', 'relocatePivotLock', 'adjustPivotSuccess', \
+        'editStrafeSensitivityTime', 'editFovTime', 'editGearTime', 'redrawAfterDrawCallback', 'keyCycleGearsDown', \
+        'bewareWarpDist', 'previousDelta', 'ignoreMouseEvents', \
+        'prefs', 'area', 'sv3d', 'rv3d'
 
     def initFields(self, context: bpy.types.Context, event: bpy.types.Event):
-        self.activationKey = event.type
         self.mouseSanityMultiplierPan = 0.003
         self.mouseSanityMultiplierStrafe = 0.02
+        self.strafeSensitivityRanges = ((0.001, 0.001), (0.02, 0.002), (0.05, 0.005), (0.1, 0.01), (0.2, 0.02), (0.5, 0.05), (1.0, 0.1), (2.0, 0.2), (5.0, 0.5), (10.0, 1.0), (20.0, 2.0), (50.0, 5.0), 100)
+        self.focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
+        self.fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), (130, 0.5), (160, 0.25), 179)
+
+        self.operatorKey = event.type
+        self.operatorKeyDown = True
+        self.operatorKeyPresses = 0
+        self.inEscape = False
+        self.isInMouseAction = False
+        self.stopSignal = None
 
         self.increasedMagnitude, self.increasedPrecision, self.alternateControl = False, False, False
 
-        self.isInMouseAction = False
-        self.modeKeyDown = True
-        self.modeKeyPresses = 0
-        self.inEscape = False
+        self.lmbDown, self.rmbDown, self.mmbDown, self.mb4Down, self.mb5Down, self.mb6Down, self.mb7Down = False, False, False, False, False, False, False
 
         self.keyDownForward, self.keyDownLeft, self.keyDownBackward, self.keyDownRight, self.keyDownDown, self.keyDownUp = False, False, False, False, False, False
-        self.isWasding = False
-        self.wasdStartTime = time.perf_counter()
-        self.wasdPreviousTime = time.perf_counter()
-        self.wasdSpeedPercentage = 0.0
-        self.stopSignal = None
 
-        self.imminentSaveStateTime = -9999
+        self.isWasding = False
+        self.wasdStartTime = time.perf_counter() - 9999
+        self.wasdPreviousTime = time.perf_counter() - 9999
+        self.wasdSpeedPercentage = 0.0
+
         self.keySaveStateDown = False
         self.keySaveStateSlotDown = [False, False, False, False, False, False, False, False, False, False]
+        self.loadCameraState = False
+        self.loadedCameraState = False
+        self.imminentSaveStateTime = time.perf_counter() - 9999
 
         self.keyDownRelocatePivot = False
         self.relocatePivotLock = False
         self.adjustPivotSuccess = False
 
-        self.prefs = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        self.editStrafeSensitivityTime = time.perf_counter() - 9999
+        self.editFovTime = time.perf_counter() - 9999
+        self.editGearTime = time.perf_counter() - 9999
+        self.redrawAfterDrawCallback = False
+        self.keyCycleGearsDown = False
 
         self.bewareWarpDist = None
         self.previousDelta = None
-
         self.ignoreMouseEvents = 0
 
-        self.editFovTime = -9999
-
-        self.focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
-        self.fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), (130, 0.5), (160, 0.25), 179)
-        self.strafeSensitivityRanges = ((0.001, 0.001), (0.02, 0.002), (0.05, 0.005), (0.1, 0.01), (0.2, 0.02), (0.5, 0.05), (1.0, 0.1), (2.0, 0.2), (5.0, 0.5), (10.0, 1.0), (20.0, 2.0), (50.0, 5.0), 100)
-
-        self.editStrafeSensitivityTime = -9999
-
-        self.redrawAfterDrawCallback = False
-
-        self.loadCameraState = False
-        self.loadedCameraState = False
-
-        self.editGearTime = -9999
-        self.keyCycleGearsDown = False
-
+        self.prefs = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
         self.area = context.area
         self.sv3d, self.rv3d = getViews3D(context)
 
         self.snapGear()
 
-        self.lmbDown = False
-        self.rmbDown = False
-        self.mmbDown = False
-        self.mb4Down = False
-        self.mb5Down = False
-        self.mb6Down = False
-        self.mb7Down = False
         self.updateMode(context, event)
 
     def getActionFunc(self, action):
@@ -217,12 +210,12 @@ class MouseStrafingOperator(bpy.types.Operator):
         try:
             if not running:
                 return {"CANCELLED"}
-            if event.type == self.activationKey:
+            if event.type == self.operatorKey:
                 if event.value == "PRESS":
-                    self.modeKeyPresses = self.modeKeyPresses + (0 if self.modeKeyDown else 1)
-                    self.modeKeyDown = True
+                    self.operatorKeyPresses = self.operatorKeyPresses + (0 if self.operatorKeyDown else 1)
+                    self.operatorKeyDown = True
                 elif event.value == "RELEASE":
-                    self.modeKeyDown = False
+                    self.operatorKeyDown = False
                 if self.shouldExitOperator():
                     return self.exitOperator(context)
             self.increasedMagnitude, self.increasedPrecision, self.alternateControl = event.shift, event.ctrl, event.alt
@@ -263,12 +256,12 @@ class MouseStrafingOperator(bpy.types.Operator):
                     self.cycleGear(context, event.shift, not self.keyCycleGearsDown)
                 self.keyCycleGearsDown = getKeyDown(self.keyCycleGearsDown, event)
             elif event.type in {self.prefs.keyForward, self.prefs.keyLeft, self.prefs.keyBackward, self.prefs.keyRight, self.prefs.keyDown, self.prefs.keyUp}:
+                self.updateKeys(context, event)
                 if self.stopSignal is None:
                     self.stopSignal = [False]
                     pinnedSv3d, pinnedRv3d = self.sv3d, self.rv3d
                     pinnedStopSignal = self.stopSignal
                     bpy.app.timers.register(lambda: fpsMove(self, pinnedSv3d, pinnedRv3d, pinnedStopSignal))
-                self.updateKeys(context, event)
             elif event.type in {"ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"}:
                 self.keySaveStateDown = getKeyDown(self.keySaveStateDown, event)
                 slotIndex = parseDigitString(event.type)
@@ -616,7 +609,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def shouldExitOperator(self):
-        return (not self.prefs.toggleMode and not self.modeKeyDown and not self.isInMouseAction) or (self.prefs.toggleMode and self.modeKeyPresses > 0) or (self.inEscape)
+        return (not self.prefs.toggleMode and not self.operatorKeyDown and not self.isInMouseAction) or (self.prefs.toggleMode and self.operatorKeyPresses > 0) or (self.inEscape)
 
     def exitOperator(self, context: bpy.types.Context, forceResetMouse: bool = False):
         global running
