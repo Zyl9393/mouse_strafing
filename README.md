@@ -1,5 +1,5 @@
 # Mouse Strafing
-Strafe in Blender's 3D View using the mouse, while holding down a key. Useful for navigating large scenes faster.
+Strafe in Blender's 3D View using the mouse, while holding down a key. Navigate large scenes faster. Maneuver through the cracks.
 
 ## Some visual stimuli to grab your attention
 <sub><sup>It's hard to show off something that doesn't have much to look at and only really helps you with moving the camera around.</sup></sub>

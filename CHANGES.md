@@ -1,4 +1,4 @@
-# 2.3 (TBD)
+# 2.3 (2021-12-18)
 * Added option to invert X/Y/Z mouse strafing directions.
 * Added option to align WASD up/down movement direction with global Z-axis instead of the view's Z-axis.
 * Added option to apply gear multiplier to WASD move speed.
