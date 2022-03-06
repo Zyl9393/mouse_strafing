@@ -172,6 +172,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.move3dView(Vector((-strafeDelta[0] if self.prefs.invertStrafeX else strafeDelta[0], -strafeDelta[1] if self.prefs.invertStrafeY else strafeDelta[1], 0)), Vector((0, 0, 0)))
 
     def strafeXRappel(self, delta: Vector):
+        strafeDelta = Vector((delta[0], delta[1])) * self.getMovementFactor(True, True)
         self.move3dView(Vector((-strafeDelta[0] if self.prefs.invertStrafeX else strafeDelta[0], 0, 0)), Vector((0, 0, -strafeDelta[1] if self.prefs.invertStrafeY else strafeDelta[1])))
 
     def turnXRappel(self, delta: Vector):

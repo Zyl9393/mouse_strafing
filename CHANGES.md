@@ -1,3 +1,6 @@
+# 2.4 (TBD)
+* Fixed movement option "Strafe left/right and rappel".
+
 # 2.3 (2021-12-18)
 * Added option to invert X/Y/Z mouse strafing directions.
 * Added option to align WASD up/down movement direction with global Z-axis instead of the view's Z-axis.
