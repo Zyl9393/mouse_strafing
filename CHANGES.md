@@ -1,5 +1,10 @@
 # 2.4 (TBD)
 * Fixed movement option "Strafe left/right and rappel".
+* Improve support for using a mouse button as addon shortcut.
+	* Interpret bindings even when too many buttons are pressed.
+		* Bindings with two buttons are chosen over bindings with a single button.
+		* Thereafter, bindings further up the list are chosen over bindings further down the list.
+		* Added up/down buttons to change order of bindings.
 
 # 2.3 (2021-12-18)
 * Added option to invert X/Y/Z mouse strafing directions.

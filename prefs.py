@@ -50,6 +50,28 @@ class RemoveButtonBinding(bpy.types.Operator):
         bpy.context.preferences.use_preferences_save = True
         return {"FINISHED"}
 
+class MoveButtonBindingUp(bpy.types.Operator):
+    """Move Mouse Button Binding up"""
+    bl_idname = "view3d.mouse_strafing_move_button_binding_up"
+    bl_label = "Move Mouse Button Binding up"
+    index: bpy.props.IntProperty()
+    def invoke(self, context, event):
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        prefs.buttonBindings.move(self.index, self.index-1)
+        bpy.context.preferences.use_preferences_save = True
+        return {"FINISHED"}
+
+class MoveButtonBindingDown(bpy.types.Operator):
+    """Move Mouse Button Binding down"""
+    bl_idname = "view3d.mouse_strafing_move_button_binding_down"
+    bl_label = "Move Mouse Button Binding down"
+    index: bpy.props.IntProperty()
+    def invoke(self, context, event):
+        prefs: MouseStrafingPreferences = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
+        prefs.buttonBindings.move(self.index, self.index+1)
+        bpy.context.preferences.use_preferences_save = True
+        return {"FINISHED"}
+
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
 
@@ -131,7 +153,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         self.drawMiscPrefs(layout)
         self.drawKeyBindPrefs(layout)
 
-    def drawButtonBindings(self, layout):
+    def drawButtonBindings(self, layout: bpy.types.UILayout):
         box = layout.box()
 
         i = 0
@@ -142,6 +164,12 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
             buttonColumnRow.prop(binding, "button2", text = "")
             row = row.column().row()
             row.prop(binding, "action", text = "")
+            opUpDiv = row.row()
+            opUpDiv.enabled = i > 0
+            opUpDiv.operator("view3d.mouse_strafing_move_button_binding_up", icon = "TRIA_UP", text = "").index = i
+            upDownDiv = row.row()
+            upDownDiv.enabled = i < len(self.buttonBindings) - 1
+            upDownDiv.operator("view3d.mouse_strafing_move_button_binding_down", icon = "TRIA_DOWN", text = "").index = i
             row.operator("view3d.mouse_strafing_remove_button_binding", icon = "REMOVE", text = "").index = i
             i += 1
         if len(self.buttonBindings) < 20:

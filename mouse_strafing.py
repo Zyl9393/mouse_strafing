@@ -310,11 +310,20 @@ class MouseStrafingOperator(bpy.types.Operator):
         for button in ["lmb", "rmb", "mmb", "mb4", "mb5", "mb6", "mb7"]:
             if self.isButtonDown(button):
                 downButtons.append(button)
-        if len(downButtons) > 2 or len(downButtons) == 0:
+        if len(downButtons) == 0:
             return None
+        singleBindings = []
+        doubleBindings = []
         for binding in self.prefs.buttonBindings:
-            if binding.button1 in downButtons and ((binding.button2 in downButtons and (binding.button2 != binding.button1 or len(downButtons) == 1)) or (binding.button2 == "omit" and len(downButtons) == 1)):
-                return binding
+            if binding.button1 in downButtons:
+                if binding.button2 == "omit":
+                    singleBindings.append(binding)
+                elif binding.button2 in downButtons:
+                    doubleBindings.append(binding)
+        if len(doubleBindings) > 0:
+            return doubleBindings[0]
+        if len(singleBindings) > 0:
+            return singleBindings[0]
         return None
 
     def isButtonDown(self, button: str) -> bool:

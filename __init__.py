@@ -43,6 +43,8 @@ def unregister():
     bpy.utils.unregister_class(mouse_strafing.CameraStates)
     bpy.utils.unregister_class(mouse_strafing.CameraState)
 
+    bpy.utils.unregister_class(prefs.MoveButtonBindingDown)
+    bpy.utils.unregister_class(prefs.MoveButtonBindingUp)
     bpy.utils.unregister_class(prefs.RemoveButtonBinding)
     bpy.utils.unregister_class(prefs.AddButtonBinding)
 
@@ -53,6 +55,8 @@ def register():
 
     bpy.utils.register_class(prefs.AddButtonBinding)
     bpy.utils.register_class(prefs.RemoveButtonBinding)
+    bpy.utils.register_class(prefs.MoveButtonBindingUp)
+    bpy.utils.register_class(prefs.MoveButtonBindingDown)
 
     bpy.utils.register_class(mouse_strafing.CameraState)
     bpy.utils.register_class(mouse_strafing.CameraStates)
