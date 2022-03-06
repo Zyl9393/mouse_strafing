@@ -5,6 +5,7 @@
 		* Bindings with two buttons are chosen over bindings with a single button.
 		* Thereafter, bindings further up the list are chosen over bindings further down the list.
 		* Added up/down buttons to change order of bindings.
+* Minimum supported Blender version increased from 2.92 to 2.93.
 
 # 2.3 (2021-12-18)
 * Added option to invert X/Y/Z mouse strafing directions.
