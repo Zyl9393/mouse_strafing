@@ -116,7 +116,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
 
     showCrosshair: bpy.props.BoolProperty(name = "Show Crosshair", description = "Show crosshair during strafe actions", default = True)
     adjustPivot: bpy.props.BoolProperty(name = "Automatically Relocate Pivot", description = "Automatically relocate the 3D View's "
-        "pivot point (instead of manually by pressing 'C') to the surface of whatever object you are looking at while using the operator; you can toggle this with Shift + C", default = False)
+        "pivot point (instead of manually by pressing 'C') to the surface of whatever object you are looking at while using the operator; you can toggle this with Shift + C", default = True)
     pivotDig: bpy.props.FloatProperty(name = "Pivot Dig", description = "When relocating the pivot point, specifies how far the pivot will be moved into the surface you are looking at, based on a percentage of its distance to the 3D View camera", \
         default = 0.0, min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 100.0, step = 100, precision = 0, subtype = "PERCENTAGE")
 
