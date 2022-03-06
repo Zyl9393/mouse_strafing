@@ -20,7 +20,7 @@ def unregisterProperties():
         del bpy.types.Scene.mstrf_camera_save_states
 
 def initAddonPreferences():
-    p: MouseStrafingPreferences = bpy.context.preferences.addons[prefs.MouseStrafingPreferences.bl_idname].preferences
+    p: prefs.MouseStrafingPreferences = bpy.context.preferences.addons[prefs.MouseStrafingPreferences.bl_idname].preferences
     if len(p.buttonBindings) == 0:
         p.buttonBindings.clear()
         b = p.buttonBindings.add()

@@ -10,7 +10,7 @@ import mathutils
 from .prefs import MouseStrafingPreferences
 from .prefs import NavigationMouseButtonBinding
 
-def getViews3D(context: bpy.types.Context) -> (bpy.types.SpaceView3D, bpy.types.RegionView3D):
+def getViews3D(context: bpy.types.Context) -> tuple[bpy.types.SpaceView3D, bpy.types.RegionView3D]:
     sv3d = getSpaceView3D(context)
     if not context.space_data.region_quadviews:
         return (sv3d, sv3d.region_3d)
@@ -31,7 +31,7 @@ def getSpaceView3D(context: bpy.types.Context) -> bpy.types.SpaceView3D:
         return area.spaces[0]
     return None
 
-def getViewPos(rv3d: bpy.types.RegionView3D) -> (Vector, Vector):
+def getViewPos(rv3d: bpy.types.RegionView3D) -> tuple[Vector, Vector]:
     pivotPos = Vector(rv3d.view_location)
     viewDir = Vector((0, 0, -1))
     viewDir.rotate(rv3d.view_rotation)
@@ -406,7 +406,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 availableGears.append(gear)
         return availableGears
 
-    def findGear(self, gears: list) -> (float, int):
+    def findGear(self, gears: list) -> tuple[float, int]:
         smallestError = math.inf
         smallestErrorGear = 1.0
         smallestErrorGearIndex = -1
@@ -692,7 +692,7 @@ def nudgeValue(value: float, magnitude: int, fine: bool, ranges: list) -> float:
         return maximum
     return value
 
-def prepareCameraTransformation(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> (Vector, Quaternion, Vector):
+def prepareCameraTransformation(sv3d: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D) -> tuple[Vector, Quaternion, Vector]:
     considerViewToCamera(sv3d, rv3d)
     viewPos, _viewDir = getViewPos(rv3d)
     viewRot = rv3d.view_rotation
@@ -890,7 +890,7 @@ def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, f
         op.redrawAfterDrawCallback = True
     return alphaFactor
 
-def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
+def getSensorSizeView3d(context: bpy.types.Context) -> tuple[float, float]:
     sensorWidth = 72.0
     aspect = context.region.width / context.region.height
     if aspect < 1:
@@ -898,7 +898,7 @@ def getSensorSizeView3d(context: bpy.types.Context) -> (float, float):
     sensorHeight = sensorWidth / aspect
     return (sensorWidth, sensorHeight)
 
-def getSensorSize(context: bpy.types.Context, cam: bpy.types.Camera) -> (float, float):
+def getSensorSize(context: bpy.types.Context, cam: bpy.types.Camera) -> tuple[float, float]:
     aspect = (context.scene.render.resolution_x / context.scene.render.pixel_aspect_y) / (context.scene.render.resolution_y / context.scene.render.pixel_aspect_x)
     sensorWidth = cam.sensor_width
     sensorHeight = cam.sensor_height
