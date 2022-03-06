@@ -1,4 +1,4 @@
-# 2.4 (TBD)
+# 2.4 (2022-03-06)
 * Fixed movement option "Strafe left/right and rappel".
 * Improve support for using a mouse button as addon shortcut.
 	* Interpret bindings even when too many buttons are pressed.
