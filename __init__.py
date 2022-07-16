@@ -2,7 +2,7 @@ bl_info = {
     "name": "Mouse Strafing",
     "description": "Strafe in the 3D View using the mouse.",
     "author": "Zyl",
-    "version": (2, 4),
+    "version": (2, 5),
     "blender": (2, 93, 0),
     "category": "3D View"
 }
@@ -33,37 +33,29 @@ def initAddonPreferences():
         b.button1, b.button2, b.action = "mmb", "omit", "roll"
         bpy.context.preferences.use_preferences_save = True
 
+addonClasses = [ \
+    prefs.NavigationMouseButtonBinding, \
+    prefs.AddButtonBinding, \
+    prefs.RemoveButtonBinding, \
+    prefs.MoveButtonBindingUp, \
+    prefs.MoveButtonBindingDown, \
+    mouse_strafing.CameraState, \
+    mouse_strafing.CameraStates, \
+    prefs.MouseStrafingPreferences, \
+    mouse_strafing.MouseStrafingOperator, \
+]
+
+def register():
+    for addonClass in addonClasses:
+        bpy.utils.register_class(addonClass)
+    registerProperties()
+    initAddonPreferences()
+    mouse_strafing.register_keymaps()
+
+
 def unregister():
     mouse_strafing.unregister_keymaps()
     unregisterProperties()
 
-    bpy.utils.unregister_class(mouse_strafing.MouseStrafingOperator)
-
-    bpy.utils.unregister_class(prefs.MouseStrafingPreferences)
-    bpy.utils.unregister_class(mouse_strafing.CameraStates)
-    bpy.utils.unregister_class(mouse_strafing.CameraState)
-
-    bpy.utils.unregister_class(prefs.MoveButtonBindingDown)
-    bpy.utils.unregister_class(prefs.MoveButtonBindingUp)
-    bpy.utils.unregister_class(prefs.RemoveButtonBinding)
-    bpy.utils.unregister_class(prefs.AddButtonBinding)
-
-    bpy.utils.unregister_class(prefs.NavigationMouseButtonBinding)
-
-def register():
-    bpy.utils.register_class(prefs.NavigationMouseButtonBinding)
-
-    bpy.utils.register_class(prefs.AddButtonBinding)
-    bpy.utils.register_class(prefs.RemoveButtonBinding)
-    bpy.utils.register_class(prefs.MoveButtonBindingUp)
-    bpy.utils.register_class(prefs.MoveButtonBindingDown)
-
-    bpy.utils.register_class(mouse_strafing.CameraState)
-    bpy.utils.register_class(mouse_strafing.CameraStates)
-    bpy.utils.register_class(prefs.MouseStrafingPreferences)
-
-    bpy.utils.register_class(mouse_strafing.MouseStrafingOperator)
-
-    registerProperties()
-    initAddonPreferences()
-    mouse_strafing.register_keymaps()
+    for addonClass in reversed(addonClasses):
+        bpy.utils.unregister_class(addonClass)

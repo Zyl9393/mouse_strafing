@@ -75,15 +75,18 @@ class MoveButtonBindingDown(bpy.types.Operator):
 class MouseStrafingPreferences(bpy.types.AddonPreferences):
     bl_idname = "mouse_strafing"
 
-    buttonBindings: bpy.props.CollectionProperty(type = NavigationMouseButtonBinding, name = "Mouse button bindings", description = "Specify which mouse button or mouse button combination engages which navigation behavior", options = {"HIDDEN"})
+    buttonBindings: bpy.props.CollectionProperty(type = NavigationMouseButtonBinding, name = "Mouse button bindings", description = "Specify which mouse button or mouse button combination engages which navigation behavior")
 
     sensitivityPan: bpy.props.FloatProperty(name = "Pan Sensitivity", description = "Mouse speed multiplier when panning the 3D View", \
         default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 3)
     sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Mouse speed multiplier for mouse strafing", \
         default = 1.0, min = 0.001, soft_min = 0.01, max = 100.0, soft_max = 10.0, step = 1, precision = 3)
-    strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe speed multipliers to cycle through with G and Shift + G. Entries set to 0 are ignored", size = 7, default = (0.025, 0.1, 0.333, 1.0, 3.00, 0, 0), min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 10.0, step = 5, precision = 2)
+    increasedMagnitudeSpeedFactor: bpy.props.FloatProperty(name = "Fast Speed Factor", description = "Strafe speed multiplier to apply while holding modifier key for increased magnitude", default = 5, min = 1, max = 100, soft_min = 1.2, soft_max = 10)
+    increasedPrecisionSpeedFactor: bpy.props.FloatProperty(name = "Slow Speed Factor", description = "Strafe speed multiplier to apply while holding modifier key for increased precision", default = 0.2, min = 0.01, max = 1, soft_min = 0.1, soft_max = 0.8)
+    strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe speed multipliers to cycle through with G and Shift + G. Entries set to 0 are ignored", \
+        size = 7, default = (0.025, 0.1, 0.333, 1.0, 3.00, 0, 0), min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 10.0, step = 5, precision = 2)
     strafeGearSelected: bpy.props.FloatProperty(name = "Selected Gear", default = 1.0, options = {"HIDDEN"})
-    
+
     invertMouseX: bpy.props.BoolProperty(name = "Invert Horizontal Panning", description = "Invert effect of horizontal mouse movement when looking around", default = False)
     invertMouse: bpy.props.BoolProperty(name = "Invert Vertical Panning", description = "Invert effect of vertical mouse movement when looking around", default = False)
 
@@ -97,6 +100,39 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         default = 0.2, min = 0.0, max = 4.0, soft_min = 0.0, soft_max = 1000, step = 1, precision = 2)
     wasdGlobalZ: bpy.props.BoolProperty(name = "Use Global Z", description = "When checked, makes WASD up/down movement aligned to global Z-axis instead of view Z-axis", default = False)
     useGearsWasd: bpy.props.BoolProperty(name = "Apply Gear to WASD Speed", description = "When checked, apply gear strafe speed multiplier to WASD move distance, too", default = True)
+
+    def getUnusedKey(self):
+        keys = {"ctrl", "shift", "alt"}
+        keys.discard(self.increasedMagnitudeKey)
+        keys.discard(self.increasedPrecisionKey)
+        keys.discard(self.changedBehaviorKey)
+        return list(keys)[0]
+
+    def changedMagnitudeKey(self, context):
+        if self.increasedPrecisionKey == self.increasedMagnitudeKey:
+            self.increasedPrecisionKey = self.getUnusedKey()
+        if self.changedBehaviorKey == self.increasedMagnitudeKey:
+            self.changedBehaviorKey = self.getUnusedKey()
+
+    def changedPrecisionKey(self, context):
+        if self.increasedMagnitudeKey == self.increasedPrecisionKey:
+            self.increasedMagnitudeKey = self.getUnusedKey()
+        if self.changedBehaviorKey == self.increasedPrecisionKey:
+            self.changedBehaviorKey = self.getUnusedKey()
+
+    def changedBehaviorKey(self, context):
+        if self.increasedMagnitudeKey == self.changedBehaviorKey:
+            self.increasedMagnitudeKey = self.getUnusedKey()
+        if self.increasedPrecisionKey == self.changedBehaviorKey:
+            self.increasedPrecisionKey = self.getUnusedKey()
+
+    modifierKeyItems = [ \
+        ("ctrl", "Ctrl", "The control (Ctrl) key", "NONE", 0), \
+        ("shift", "Shift", "The shift key", "NONE", 1), \
+        ("alt", "Alt", "The alternate (Alt) key", "NONE", 2)]
+    increasedMagnitudeKey: bpy.props.EnumProperty(name = "Magnitude Key", description = "Specify key which increases action magnitude while held (move faster, increase increment size)", items = modifierKeyItems, default = "shift", update = changedMagnitudeKey)
+    increasedPrecisionKey: bpy.props.EnumProperty(name = "Precision Key", description = "Specify key which increases action precision while held (move slower, decrease increment size)", items = modifierKeyItems, default = "alt", update = changedPrecisionKey)
+    changedBehaviorKey: bpy.props.EnumProperty(name = "Alternate Key", description = "Specify key which engages alternate action while held", items = modifierKeyItems, default = "ctrl", update = changedBehaviorKey)
 
     mouseWheelActionItems = [ \
         ("moveZ", "Move forward/backwards", "Move forward/backwards", "NONE", 0), \
@@ -151,6 +187,7 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         self.drawPivotAdjustmentPrefs(layout)
         self.drawWasdPrefs(layout)
         self.drawMiscPrefs(layout)
+        self.drawModifierKeyPrefs(layout)
         self.drawKeyBindPrefs(layout)
 
     def drawButtonBindings(self, layout: bpy.types.UILayout):
@@ -182,8 +219,14 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, "sensitivityPan")
         row.prop(self, "sensitivityStrafe")
-        box.row().prop(self, "strafeGears")
-        
+
+        row = box.row()
+        row.prop(self, "increasedMagnitudeSpeedFactor")
+        row.prop(self, "increasedPrecisionSpeedFactor")
+
+        row = box.row()
+        row.prop(self, "strafeGears")
+
         row = box.row()
         row.prop(self, "invertMouse")
         row.prop(self, "invertMouseX")
@@ -217,6 +260,17 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, "pivotAdjustmentIgnoreBackfaces")
 
+    def drawWasdPrefs(self, layout: bpy.types.UILayout):
+        box = layout.box()
+
+        row = box.row()
+        row.prop(self, "wasdTopSpeed")
+        row.prop(self, "useGearsWasd")
+
+        row = box.row()
+        row.prop(self, "wasdTime")
+        row.prop(self, "wasdGlobalZ")
+
     def drawMiscPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
 
@@ -228,16 +282,17 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row.prop(self, "leaveFOV")
         row.prop(self, "debug")
 
-    def drawWasdPrefs(self, layout: bpy.types.UILayout):
+    def drawModifierKeyPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
 
         row = box.row()
-        row.prop(self, "wasdTopSpeed")
-        row.prop(self, "useGearsWasd")
+        row.prop(self, "increasedMagnitudeKey")
 
         row = box.row()
-        row.prop(self, "wasdTime")
-        row.prop(self, "wasdGlobalZ")
+        row.prop(self, "increasedPrecisionKey")
+
+        row = box.row()
+        row.prop(self, "changedBehaviorKey")
 
     def drawKeyBindPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
