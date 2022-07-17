@@ -222,7 +222,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                     self.operatorKeyDown = False
                 if self.shouldExitOperator():
                     return self.exitOperator(context)
-            modifierKeys = {"shift": event.shift, "ctrl": event.ctrl, "alt": event.alt}
+            modifierKeys = {"shift": event.shift, "ctrl": event.ctrl, "alt": event.alt, "omit": False}
             self.increasedMagnitude, self.increasedPrecision, self.changedBehavior = modifierKeys[self.prefs.increasedMagnitudeKey], modifierKeys[self.prefs.increasedPrecisionKey], modifierKeys[self.prefs.changedBehaviorKey]
             if event.type in { "MOUSEMOVE", "INBETWEEN_MOUSEMOVE" }:
                 if self.ignoreMouseEvents > 0:
@@ -512,16 +512,14 @@ class MouseStrafingOperator(bpy.types.Operator):
         mod = 50 / focalLength
         if mod > 1:
             mod = 1
-        if self.isPrecisionRequested():
-            return mod * self.prefs.increasedPrecisionPanFactor
+        if self.changedBehavior:
+            return mod * 0.1
         return mod
 
     def getRollFactor(self):
         mod = 1.0
         if self.changedBehavior:
-            mod = 0.25
-        if self.isPrecisionRequested():
-            return mod * 0.5
+            mod = 0.1
         return mod
 
     def getMovementFactor(self, isForMouseMovement: bool, useGear: bool) -> float:
@@ -535,12 +533,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         if self.isHigherMagnitudeRequested():
             return self.prefs.increasedMagnitudeSpeedFactor
         if self.isPrecisionRequested():
-            if self.changedBehavior:
-                return self.prefs.increasedPrecisionSpeedFactor / self.prefs.increasedMagnitudeSpeedFactor
-            else:
-                return self.prefs.increasedPrecisionSpeedFactor
-        if self.changedBehavior:
-            return 1 / self.prefs.increasedMagnitudeSpeedFactor
+            return self.prefs.increasedPrecisionSpeedFactor
         return 1
 
     def getContextualLensSensor(self, context) -> tuple[float, tuple[float, float], bpy.types.Camera]:

@@ -26,7 +26,7 @@ This section assumes you set the addon up as described above and have default ke
 In the 3D View, press and hold `spacebar` to enter mouse strafing navigation. A crosshair will appear in the center of the screen. Click and hold the `left, right or middle mouse button` (`LMB`, `RMB`, `MMB`) to enable pannig and various mouse strafing behaviors. Additionally, you can hold the `both the left and right mouse button` (`BMB`) together for a 4th movement option. Then, move the mouse to strafe or turn. Release `spacebar` to end navigation. Which buttons do what can be configured in the addon preferences.
 
 ## Speed adjustment
-Hold `Shift` to move at 500% speed. Hold `Ctrl` to move at 20% speed (50% for pan and roll sensitivity).  
+Hold `Shift` to move at 500% speed. Hold `Alt` to move at 20% speed (50% for pan and roll sensitivity).  
 You can specify additional speed multipliers ("Gears") in the addon preferences through which you can cycle by pressing `G` or `Shift + G`.  
 You can also configure `mouse wheel` to change mouse strafe sensitivity (instead of moving the camera) in the addon preferences.
 

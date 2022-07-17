@@ -81,8 +81,8 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         default = 1.0, min = 0.001, max = 100.0, soft_min = 0.01, soft_max = 10.0, step = 1, precision = 3)
     sensitivityStrafe: bpy.props.FloatProperty(name = "Strafe Sensitivity", description = "Mouse speed multiplier for mouse strafing", \
         default = 1.0, min = 0.001, soft_min = 0.01, max = 100.0, soft_max = 10.0, step = 1, precision = 3)
-    increasedMagnitudeSpeedFactor: bpy.props.FloatProperty(name = "Fast Speed Factor", description = "Strafe speed multiplier to apply while holding modifier key for increased magnitude", default = 5, min = 1, max = 100, soft_min = 1.2, soft_max = 10)
-    increasedPrecisionSpeedFactor: bpy.props.FloatProperty(name = "Slow Speed Factor", description = "Strafe speed multiplier to apply while holding modifier key for increased precision", default = 0.2, min = 0.01, max = 1, soft_min = 0.1, soft_max = 0.8)
+    increasedMagnitudeSpeedFactor: bpy.props.FloatProperty(name = "Fast Speed Factor", description = "Strafe speed multiplier to apply while holding modifier key for increased magnitude (default is shift key)", default = 5, min = 1, max = 100, soft_min = 1.2, soft_max = 10)
+    increasedPrecisionSpeedFactor: bpy.props.FloatProperty(name = "Slow Speed Factor", description = "Strafe speed multiplier to apply while holding modifier key for increased precision (default is alt key)", default = 0.2, min = 0.01, max = 1, soft_min = 0.1, soft_max = 0.8)
     strafeGears: bpy.props.FloatVectorProperty(name = "Gears", description = "Set additional strafe speed multipliers to cycle through with G and Shift + G. Entries set to 0 are ignored", \
         size = 7, default = (0.025, 0.1, 0.333, 1.0, 3.00, 0, 0), min = 0.0, max = 100.0, soft_min = 0.0, soft_max = 10.0, step = 5, precision = 2)
     strafeGearSelected: bpy.props.FloatProperty(name = "Selected Gear", default = 1.0, options = {"HIDDEN"})
@@ -94,45 +94,52 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     invertStrafeY: bpy.props.BoolProperty(name = "Invert Strafe Y", description = "Invert direction of upwards/downwards mouse strafe movement", default = False)
     invertStrafeZ: bpy.props.BoolProperty(name = "Invert Strafe Z", description = "Invert direction of forwards/backwards mouse strafe movement", default = False)
 
-    wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed when using WASD keys to move", \
+    wasdTopSpeed: bpy.props.FloatProperty(name = "WASD Top Speed", description = "Top speed, in units per second, when using WASD keys to move", \
         default = 8.0, min = 0.001, max = 20000, soft_min = 0.01, soft_max = 4000, step = 10, precision = 2)
-    wasdTime: bpy.props.FloatProperty(name = "WASD Acceleration Time", description = "Time until top speed is reached when using WASD keys to move", \
+    wasdTime: bpy.props.FloatProperty(name = "WASD Acceleration Time", description = "Time, in seconds, until top speed is reached when using WASD keys to move", \
         default = 0.2, min = 0.0, max = 4.0, soft_min = 0.0, soft_max = 1000, step = 1, precision = 2)
     wasdGlobalZ: bpy.props.BoolProperty(name = "Use Global Z", description = "When checked, makes WASD up/down movement aligned to global Z-axis instead of view Z-axis", default = False)
     useGearsWasd: bpy.props.BoolProperty(name = "Apply Gear to WASD Speed", description = "When checked, apply gear strafe speed multiplier to WASD move distance, too", default = True)
 
-    def getUnusedKey(self):
+    def getUnusedModifierKey(self):
         keys = {"ctrl", "shift", "alt"}
         keys.discard(self.increasedMagnitudeKey)
         keys.discard(self.increasedPrecisionKey)
         keys.discard(self.changedBehaviorKey)
         return list(keys)[0]
 
-    def changedMagnitudeKey(self, context):
+    def updateIncreasedMagnitudeKey(self, context):
+        if self.increasedMagnitudeKey == "omit":
+            return
         if self.increasedPrecisionKey == self.increasedMagnitudeKey:
-            self.increasedPrecisionKey = self.getUnusedKey()
+            self.increasedPrecisionKey = self.getUnusedModifierKey()
         if self.changedBehaviorKey == self.increasedMagnitudeKey:
-            self.changedBehaviorKey = self.getUnusedKey()
+            self.changedBehaviorKey = self.getUnusedModifierKey()
 
-    def changedPrecisionKey(self, context):
+    def updateIncreasedPrecisionKey(self, context):
+        if self.increasedPrecisionKey == "omit":
+            return
         if self.increasedMagnitudeKey == self.increasedPrecisionKey:
-            self.increasedMagnitudeKey = self.getUnusedKey()
+            self.increasedMagnitudeKey = self.getUnusedModifierKey()
         if self.changedBehaviorKey == self.increasedPrecisionKey:
-            self.changedBehaviorKey = self.getUnusedKey()
+            self.changedBehaviorKey = self.getUnusedModifierKey()
 
-    def changedBehaviorKey(self, context):
+    def updateChangedBehaviorKey(self, context):
+        if self.changedBehaviorKey == "omit":
+            return
         if self.increasedMagnitudeKey == self.changedBehaviorKey:
-            self.increasedMagnitudeKey = self.getUnusedKey()
+            self.increasedMagnitudeKey = self.getUnusedModifierKey()
         if self.increasedPrecisionKey == self.changedBehaviorKey:
-            self.increasedPrecisionKey = self.getUnusedKey()
+            self.increasedPrecisionKey = self.getUnusedModifierKey()
 
     modifierKeyItems = [ \
         ("ctrl", "Ctrl", "The control (Ctrl) key", "NONE", 0), \
         ("shift", "Shift", "The shift key", "NONE", 1), \
-        ("alt", "Alt", "The alternate (Alt) key", "NONE", 2)]
-    increasedMagnitudeKey: bpy.props.EnumProperty(name = "Magnitude Key", description = "Specify key which increases action magnitude while held (move faster, increase increment size)", items = modifierKeyItems, default = "shift", update = changedMagnitudeKey)
-    increasedPrecisionKey: bpy.props.EnumProperty(name = "Precision Key", description = "Specify key which increases action precision while held (move slower, decrease increment size)", items = modifierKeyItems, default = "alt", update = changedPrecisionKey)
-    changedBehaviorKey: bpy.props.EnumProperty(name = "Alternate Key", description = "Specify key which engages alternate action while held", items = modifierKeyItems, default = "ctrl", update = changedBehaviorKey)
+        ("alt", "Alt", "The alternate (Alt) key", "NONE", 2), \
+        ("omit", "Omit", "Disables modifications by associating no modifier key with it", "NONE", 3) ]
+    increasedMagnitudeKey: bpy.props.EnumProperty(name = "Magnitude Key", description = "Specify key which increases action magnitude (move faster, increase increment size) while held", items = modifierKeyItems, default = "shift", update = updateIncreasedMagnitudeKey)
+    increasedPrecisionKey: bpy.props.EnumProperty(name = "Precision Key", description = "Specify key which increases action precision (move slower, decrease increment size) while held", items = modifierKeyItems, default = "alt", update = updateIncreasedPrecisionKey)
+    changedBehaviorKey: bpy.props.EnumProperty(name = "Alternate Key", description = "Specify key which engages alternate action (pan/roll slower) while held", items = modifierKeyItems, default = "ctrl", update = updateChangedBehaviorKey)
 
     mouseWheelActionItems = [ \
         ("moveZ", "Move forward/backwards", "Move forward/backwards", "NONE", 0), \
