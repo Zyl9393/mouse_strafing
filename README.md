@@ -31,7 +31,7 @@ Pressing only `C` disables automatic pivot relocation if it is enabled to give y
 When backface culling is enabled, backfaces will be ignored; this behavior can be changed in the addon preferences.  
 
 ## Speed adjustment
-Hold `Shift` to move at 500% speed. Hold `Alt` to move at 20% speed. Hold `Ctrl` to pan/roll at 10% speed.  
+Hold `Shift` to move at 500% speed. Hold `Alt` to move at 20% speed. Hold `Alt + Ctrl` to also pan/roll at 10% speed.  
 You can specify additional movement speed multipliers ("Gears") in the addon preferences through which you can cycle by pressing `G` or `Shift + G`.  
 You can also configure `mouse wheel` to change mouse strafe sensitivity (instead of moving the camera) in the addon preferences.
 

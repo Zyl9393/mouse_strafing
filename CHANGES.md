@@ -1,9 +1,10 @@
-# 2.5 (TBD)
+# 2.5 (2022-07-17)
 * Fix regression issue preventing camera panning when camera locked to view.
 * Can now specify which modifier key performs which action.
 	* This introduces a new default behavior where now `Alt` increases precision (i.e. causes speed decrease) while `Ctrl` engages alternative behavior (i.e. FOV-change using mouse wheel) in accordance with how it works everywhere else in Blender.
 * Can now specify modifier key effect strength (speed increase/decrease).
 * Pan sensitivity is now decreased automatically depending on focal length when it is greater than 50mm.
+* Removed some confusing modifier key combinations.
 * Added undo support.
 
 # 2.4 (2022-03-06)

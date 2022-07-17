@@ -512,13 +512,13 @@ class MouseStrafingOperator(bpy.types.Operator):
         mod = 50 / focalLength
         if mod > 1:
             mod = 1
-        if self.changedBehavior:
+        if self.isPrecisionRequested() and self.changedBehavior:
             return mod * 0.1
         return mod
 
     def getRollFactor(self):
         mod = 1.0
-        if self.changedBehavior:
+        if self.isPrecisionRequested() and self.changedBehavior:
             mod = 0.1
         return mod
 
