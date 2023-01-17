@@ -1,5 +1,6 @@
 # 2.6 (TBD)
 * Fix time-dependent effects (text fade-out, WASD acceleration) becoming jerky on Windows when the system has been running for more than two days.
+* Can now specify additional speed multiplier that is used for all movement operations when the scene's unit system is set to 'None'.
 
 # 2.5 (2022-07-17)
 * Fix regression issue preventing camera panning when camera locked to view.

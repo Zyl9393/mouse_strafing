@@ -87,7 +87,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         'keyDownRelocatePivot', 'relocatePivotLock', 'adjustPivotSuccess', \
         'editStrafeSensitivityTimeNs', 'editFovTimeNs', 'editGearTimeNs', 'redrawAfterDrawCallback', 'keyCycleGearsDown', \
         'bewareWarpDist', 'previousDelta', 'ignoreMouseEvents', \
-        'prefs', 'area', 'sv3d', 'rv3d', \
+        'prefs', 'area', 'sv3d', 'rv3d', 'isUnitSystemNone', \
         'returnValue'
 
     def initFields(self, context: bpy.types.Context, event: bpy.types.Event):
@@ -141,6 +141,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.prefs = context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
         self.area = context.area
         self.sv3d, self.rv3d = getViews3D(context)
+        self.isUnitSystemNone = context.scene.unit_settings.system == 'NONE'
 
         self.returnValue = "FINISHED" if self.isEditingCamera() else "CANCELLED"
 
@@ -531,11 +532,12 @@ class MouseStrafingOperator(bpy.types.Operator):
         return mod
 
     def getMovementFactor(self, isForMouseMovement: bool, useGear: bool) -> float:
-        modStrafe = self.getMovementFactorModifier()
+        mod = self.getMovementFactorModifier()
         gear = self.prefs.strafeGearSelected if useGear else 1
+        unitSystemConversion = self.prefs.speedMultiplierForUnitSystemNone if self.isUnitSystemNone else 1.0
         if isForMouseMovement:
-            return self.mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * gear * modStrafe
-        return gear * modStrafe
+            return self.mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * mod * gear * unitSystemConversion
+        return mod * gear * unitSystemConversion
 
     def getMovementFactorModifier(self):
         if self.isHigherMagnitudeRequested():

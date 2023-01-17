@@ -172,6 +172,8 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
     debug: bpy.props.BoolProperty(name = "Debug Mode", description = "When checked, print in the console when Blender's cursor_warp glitch is detected and countered", default = False)
     toggleMode: bpy.props.BoolProperty(name = "Toggle", description = "When checked, strafe-mode will only quit when pressing the key a second time or pressing Escape", default = False)
     leaveFOV: bpy.props.BoolProperty(name = "Leave FOV", description = "When checked, loading camera states will leave the FOV as it is", default = False)
+    speedMultiplierForUnitSystemNone: bpy.props.FloatProperty(name = "Unit System 'None' Speed Multiplier", description = "Speed multiplier which is applied to all movement operations when the scene's unit system is set to 'None'. For example, if such a scene uses one unit per inch instead of per meter, you might want to set this to 100cm / 2.54cm = 39.37", \
+        default = 1.0, min = 0.001, soft_min = 0.01, max = 10000.0, soft_max = 100.0, step = 1, precision = 3)
 
     keyForward: bpy.props.StringProperty(name = "Move Forward", description = "Press this key to move the camera forward (must be upper-case)", default = "W")
     keyBackward: bpy.props.StringProperty(name = "Move Backward", description = "Press this key to move the camera backward (must be upper-case)", default = "S")
@@ -288,6 +290,9 @@ class MouseStrafingPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, "leaveFOV")
         row.prop(self, "debug")
+
+        row = box.row()
+        row.prop(self, "speedMultiplierForUnitSystemNone")
 
     def drawModifierKeyPrefs(self, layout: bpy.types.UILayout):
         box = layout.box()
