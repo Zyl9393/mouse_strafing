@@ -53,6 +53,11 @@ def getKeyDown(previousKeyState: bool, event: bpy.types.Event) -> bool:
 running = False
 drawCallbackHandle = None
 
+ms = 1_000_000 # one millisecond worth of nanoseconds for use with values returned by time.perf_counter_ns()
+
+def calcAtLeastOneYearAgo(nowNs: int) -> int:
+    return nowNs - 1000 * ms * 60 * 60 * 24 * 400
+
 class CameraState(bpy.types.PropertyGroup):
     viewPos: bpy.props.FloatVectorProperty(size = 3, options = {"HIDDEN"})
     rot: bpy.props.FloatVectorProperty(size = 4, options = {"HIDDEN"})
@@ -77,15 +82,18 @@ class MouseStrafingOperator(bpy.types.Operator):
         'increasedMagnitude', 'increasedPrecision', 'changedBehavior', \
         'lmbDown', 'rmbDown', 'mmbDown', 'mb4Down', 'mb5Down', 'mb6Down', 'mb7Down', \
         'keyDownForward', 'keyDownLeft', 'keyDownBackward', 'keyDownRight', 'keyDownDown', 'keyDownUp', \
-        'isWasding', 'wasdStartTime', 'wasdPreviousTime', 'wasdSpeedPercentage', \
-        'keySaveStateDown', 'keySaveStateSlotDown', 'loadCameraState', 'loadedCameraState', 'imminentSaveStateTime',  \
+        'isWasding', 'wasdStartTimeNs', 'wasdPreviousTimeNs', 'wasdSpeedPercentage', \
+        'keySaveStateDown', 'keySaveStateSlotDown', 'loadCameraState', 'loadedCameraState', 'imminentSaveStateTimeNs',  \
         'keyDownRelocatePivot', 'relocatePivotLock', 'adjustPivotSuccess', \
-        'editStrafeSensitivityTime', 'editFovTime', 'editGearTime', 'redrawAfterDrawCallback', 'keyCycleGearsDown', \
+        'editStrafeSensitivityTimeNs', 'editFovTimeNs', 'editGearTimeNs', 'redrawAfterDrawCallback', 'keyCycleGearsDown', \
         'bewareWarpDist', 'previousDelta', 'ignoreMouseEvents', \
         'prefs', 'area', 'sv3d', 'rv3d', \
         'returnValue'
 
     def initFields(self, context: bpy.types.Context, event: bpy.types.Event):
+        nowNs = time.perf_counter_ns()
+        atLeastOneYearAgo = calcAtLeastOneYearAgo(nowNs)
+
         self.mouseSanityMultiplierPan = 0.003
         self.mouseSanityMultiplierStrafe = 0.02
         self.strafeSensitivityRanges = ((0.001, 0.001), (0.02, 0.002), (0.05, 0.005), (0.1, 0.01), (0.2, 0.02), (0.5, 0.05), (1.0, 0.1), (2.0, 0.2), (5.0, 0.5), (10.0, 1.0), (20.0, 2.0), (50.0, 5.0), 100)
@@ -106,23 +114,23 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.keyDownForward, self.keyDownLeft, self.keyDownBackward, self.keyDownRight, self.keyDownDown, self.keyDownUp = False, False, False, False, False, False
 
         self.isWasding = False
-        self.wasdStartTime = time.perf_counter() - 9999
-        self.wasdPreviousTime = time.perf_counter() - 9999
+        self.wasdStartTimeNs = 0
+        self.wasdPreviousTimeNs = 0
         self.wasdSpeedPercentage = 0.0
 
         self.keySaveStateDown = False
         self.keySaveStateSlotDown = [False, False, False, False, False, False, False, False, False, False]
         self.loadCameraState = False
         self.loadedCameraState = False
-        self.imminentSaveStateTime = time.perf_counter() - 9999
+        self.imminentSaveStateTimeNs = atLeastOneYearAgo
 
         self.keyDownRelocatePivot = False
         self.relocatePivotLock = False
         self.adjustPivotSuccess = False
 
-        self.editStrafeSensitivityTime = time.perf_counter() - 9999
-        self.editFovTime = time.perf_counter() - 9999
-        self.editGearTime = time.perf_counter() - 9999
+        self.editStrafeSensitivityTimeNs = atLeastOneYearAgo
+        self.editFovTimeNs = atLeastOneYearAgo
+        self.editGearTimeNs = atLeastOneYearAgo
         self.redrawAfterDrawCallback = False
         self.keyCycleGearsDown = False
 
@@ -255,7 +263,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                     prefs = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
                     prefs.sensitivityStrafe = nudgeValue(prefs.sensitivityStrafe, magnitude, self.increasedPrecision, self.strafeSensitivityRanges)
                     bpy.context.preferences.use_preferences_save = True
-                    self.editStrafeSensitivityTime = time.perf_counter()
+                    self.editStrafeSensitivityTimeNs = time.perf_counter_ns()
             elif event.type == self.prefs.keyCycleGears:
                 if event.value == "PRESS":
                     self.cycleGear(context, event.shift, not self.keyCycleGearsDown)
@@ -368,8 +376,8 @@ class MouseStrafingOperator(bpy.types.Operator):
         if not wasWasding or not self.isWasding:
             self.wasdSpeedPercentage = 0.0
         if not wasWasding and self.isWasding:
-            self.wasdStartTime = time.perf_counter()
-            self.wasdPreviousTime = self.wasdStartTime
+            self.wasdStartTimeNs = time.perf_counter_ns()
+            self.wasdPreviousTimeNs = self.wasdStartTimeNs
 
     def pan3dView(self, delta: Vector):
         viewPos, viewRot, _viewDir = prepareCameraTransformation(self.sv3d, self.rv3d)
@@ -409,7 +417,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             gearIndex = gearIndex % len(availableGears)
         self.prefs.strafeGearSelected = availableGears[gearIndex]
         bpy.context.preferences.use_preferences_save = True
-        self.editGearTime = time.perf_counter()
+        self.editGearTimeNs = time.perf_counter_ns()
 
     def getGears(self):
         availableGears = []
@@ -441,11 +449,11 @@ class MouseStrafingOperator(bpy.types.Operator):
                 cam = bpy.types.Camera(self.sv3d.camera.data)
                 sensorSize = getSensorSize(context, cam)
                 cam.lens = self.nudgeLensValue(cam.lens, sensorSize[0], sensorSize[1], self.prefs.altWheelMoveFunction, zoomOut)
-                self.editFovTime = time.perf_counter()
+                self.editFovTimeNs = time.perf_counter_ns()
         else:
             sensorSize = getSensorSizeView3d(context)
             self.sv3d.lens = self.nudgeLensValue(self.sv3d.lens, sensorSize[0], sensorSize[1], self.prefs.altWheelMoveFunction, zoomOut)
-            self.editFovTime = time.perf_counter()
+            self.editFovTimeNs = time.perf_counter_ns()
 
     def nudgeLensValue(self, lens: float, sensorWidth: float, sensorHeight: float, method: str, zoomOut: bool) -> float:
         magnitude = 1 if zoomOut else -1
@@ -459,7 +467,7 @@ class MouseStrafingOperator(bpy.types.Operator):
 
     def processSaveState(self, saveStateSlot, context: bpy.types.Context):
         self.initSaveStates(context)
-        now = time.perf_counter()
+        nowNs = time.perf_counter_ns()
         states: CameraStates = context.scene.mstrf_camera_save_states
         if self.loadCameraState:
             if states.imminentSlot != 0:
@@ -469,7 +477,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                 self.applyCameraState(context, states.savedStates[saveStateSlot])
                 self.loadedCameraState = True
             self.loadCameraState = False
-        elif states.imminentSlot == saveStateSlot and self.imminentSaveStateTime > now - 1.0:
+        elif states.imminentSlot == saveStateSlot and self.imminentSaveStateTimeNs > nowNs - 1000 * ms:
             if not states.usedStates[states.imminentSlot]:
                 self.saveCameraState(states, states.imminentSlot, states.imminentState)
             self.applyCameraState(context, states.savedStates[saveStateSlot])
@@ -486,7 +494,7 @@ class MouseStrafingOperator(bpy.types.Operator):
             states.imminentState.lens = self.sv3d.lens
             states.imminentState.isPerspective = self.rv3d.is_perspective
             states.imminentSlot = saveStateSlot
-            self.imminentSaveStateTime = now
+            self.imminentSaveStateTimeNs = nowNs
 
     def saveCameraState(self, states: CameraStates, slot, state: CameraState):
         states.usedStates[slot] = True
@@ -582,15 +590,15 @@ class MouseStrafingOperator(bpy.types.Operator):
         applyCameraTranformation(self.sv3d, self.rv3d, viewPos, newRot)
 
     def wasdDelta(self):
-        now = time.perf_counter()
+        nowNs = time.perf_counter_ns()
         moveFactor = self.getMovementFactor(False, self.prefs.useGearsWasd)
-        delta = moveFactor * self.wasdSpeedPercentage * self.prefs.wasdTopSpeed * (now - self.wasdPreviousTime)
-        self.wasdPreviousTime = now
+        delta = moveFactor * self.wasdSpeedPercentage * self.prefs.wasdTopSpeed * ((nowNs - self.wasdPreviousTimeNs) / 1_000_000_000)
+        self.wasdPreviousTimeNs = nowNs
         return delta
     
     def wasdAccelerate(self):
         if self.wasdSpeedPercentage < 1 and self.prefs.wasdTime > 0.0005:
-            self.wasdSpeedPercentage = ((time.perf_counter() - self.wasdStartTime) / self.prefs.wasdTime)
+            self.wasdSpeedPercentage = ((time.perf_counter_ns() - self.wasdStartTimeNs) / 1_000_000_000 / self.prefs.wasdTime)
             if self.wasdSpeedPercentage > 1:
                 self.wasdSpeedPercentage = 1
         else:
@@ -825,7 +833,7 @@ def drawCrosshair(op: MouseStrafingOperator, context: bpy.types.Context):
     blf.draw(0, "+")
 
 def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editFovTime, 1.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editFovTimeNs, 1.0, 0.5)
     if alphaFactor == 0:
         return
     uiScale = context.preferences.system.ui_scale
@@ -860,7 +868,7 @@ def drawFovInfo(op: MouseStrafingOperator, context: bpy.types.Context):
         drawText(x, y - int(95*uiScale), "Showing Camera Values", halign = "CENTER")
 
 def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editStrafeSensitivityTime, 1.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editStrafeSensitivityTimeNs, 1.0, 0.5)
     if alphaFactor == 0:
         return
     x, y = context.region.width // 2, context.region.height // 2
@@ -872,7 +880,7 @@ def drawStrafeSensitivityInfo(op: MouseStrafingOperator, context: bpy.types.Cont
     drawText(x, y + int(40*uiScale), f"{op.prefs.sensitivityStrafe:.3f}", halign = "CENTER")
 
 def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
-    alphaFactor = drawFadeAlpha(op, op.editGearTime, 1.0, 0.5)
+    alphaFactor = drawFadeAlpha(op, op.editGearTimeNs, 1.0, 0.5)
     if alphaFactor == 0:
         return
     x, y = context.region.width // 2, context.region.height // 2
@@ -892,9 +900,9 @@ def drawGears(op: MouseStrafingOperator, context: bpy.types.Context):
         drawText(x - (110*uiScale), y - int((yoffset-index*25)*uiScale), f"{gear:0.3f}", halign = "CENTER", valign = "MIDDLE")
         index = index + 1
 
-def drawFadeAlpha(op: MouseStrafingOperator, wakeTime: float, holdTime: float, fadeTime: float) -> float:
-    now = time.perf_counter()
-    passed = now - wakeTime
+def drawFadeAlpha(op: MouseStrafingOperator, wakeTimeNs: float, holdTime: float, fadeTime: float) -> float:
+    nowNs = time.perf_counter_ns()
+    passed = (nowNs - wakeTimeNs) / 1_000_000_000
     alphaFactor = 1.0
     if passed > holdTime:
         alphaFactor = 1.0 - (passed - holdTime) / fadeTime

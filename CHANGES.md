@@ -1,3 +1,6 @@
+# 2.6 (TBD)
+* Fix time-dependent effects (text fade-out, WASD acceleration) becoming jerky on Windows when the system has been running for more than two days.
+
 # 2.5 (2022-07-17)
 * Fix regression issue preventing camera panning when camera locked to view.
 * Can now specify which modifier key performs which action.
