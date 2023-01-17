@@ -55,6 +55,12 @@ drawCallbackHandle = None
 
 ms = 1_000_000 # one millisecond worth of nanoseconds for use with values returned by time.perf_counter_ns()
 
+mouseSanityMultiplierPan = 0.003
+mouseSanityMultiplierStrafe = 0.02
+strafeSensitivityRanges = ((0.001, 0.001), (0.02, 0.002), (0.05, 0.005), (0.1, 0.01), (0.2, 0.02), (0.5, 0.05), (1.0, 0.1), (2.0, 0.2), (5.0, 0.5), (10.0, 1.0), (20.0, 2.0), (50.0, 5.0), 100)
+focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
+fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), (130, 0.5), (160, 0.25), 179)
+
 def calcAtLeastOneYearAgo(nowNs: int) -> int:
     return nowNs - 1000 * ms * 60 * 60 * 24 * 400
 
@@ -77,8 +83,7 @@ class MouseStrafingOperator(bpy.types.Operator):
     bl_label = "Mouse Strafing"
     bl_options = { "BLOCKING", "UNDO" }
 
-    __slots__ = 'mouseSanityMultiplierPan', 'mouseSanityMultiplierStrafe', 'strafeSensitivityRanges', 'focalLengthRanges', 'fovRanges', \
-        'operatorKey', 'operatorKeyDown', 'operatorKeyPresses', 'inEscape', 'stopSignal', 'isInMouseAction', \
+    __slots__ = 'operatorKey', 'operatorKeyDown', 'operatorKeyPresses', 'inEscape', 'stopSignal', 'isInMouseAction', \
         'increasedMagnitude', 'increasedPrecision', 'changedBehavior', \
         'lmbDown', 'rmbDown', 'mmbDown', 'mb4Down', 'mb5Down', 'mb6Down', 'mb7Down', \
         'keyDownForward', 'keyDownLeft', 'keyDownBackward', 'keyDownRight', 'keyDownDown', 'keyDownUp', \
@@ -93,12 +98,6 @@ class MouseStrafingOperator(bpy.types.Operator):
     def initFields(self, context: bpy.types.Context, event: bpy.types.Event):
         nowNs = time.perf_counter_ns()
         atLeastOneYearAgo = calcAtLeastOneYearAgo(nowNs)
-
-        self.mouseSanityMultiplierPan = 0.003
-        self.mouseSanityMultiplierStrafe = 0.02
-        self.strafeSensitivityRanges = ((0.001, 0.001), (0.02, 0.002), (0.05, 0.005), (0.1, 0.01), (0.2, 0.02), (0.5, 0.05), (1.0, 0.1), (2.0, 0.2), (5.0, 0.5), (10.0, 1.0), (20.0, 2.0), (50.0, 5.0), 100)
-        self.focalLengthRanges = ((1, 0.125), (5, 0.25), (10, 0.5), (20, 1), (50, 2), (100, 2.5), (175, 5), 250)
-        self.fovRanges = ((0.125, 0.125), (5, 0.25), (15, 0.5), (30, 1), (130, 0.5), (160, 0.25), 179)
 
         self.operatorKey = event.type
         self.operatorKeyDown = True
@@ -168,11 +167,11 @@ class MouseStrafingOperator(bpy.types.Operator):
         return
 
     def turnXY(self, context: bpy.types.Context, delta: Vector):
-        panDelta = delta * self.mouseSanityMultiplierPan * self.prefs.sensitivityPan * (0.85 if self.isWasding else 1) * self.getPanFactor(context)
+        panDelta = delta * mouseSanityMultiplierPan * self.prefs.sensitivityPan * (0.85 if self.isWasding else 1) * self.getPanFactor(context)
         self.pan3dView(Vector((-panDelta[0] if self.prefs.invertMouseX else panDelta[0], -panDelta[1] if self.prefs.invertMouse else panDelta[1])))
 
     def roll(self, context: bpy.types.Context, delta: Vector):
-        rollDelta = delta * self.mouseSanityMultiplierPan * self.prefs.sensitivityPan * (0.85 if self.isWasding else 1) * self.getRollFactor()
+        rollDelta = delta * mouseSanityMultiplierPan * self.prefs.sensitivityPan * (0.85 if self.isWasding else 1) * self.getRollFactor()
         self.roll3dView(Vector((-rollDelta[0] if self.prefs.invertMouseX else rollDelta[0], -rollDelta[1] if self.prefs.invertMouse else rollDelta[1])))
 
     def strafeXZ(self, context: bpy.types.Context, delta: Vector):
@@ -188,7 +187,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         self.move3dView(Vector((-strafeDelta[0] if self.prefs.invertStrafeX else strafeDelta[0], 0, 0)), Vector((0, 0, -strafeDelta[1] if self.prefs.invertStrafeY else strafeDelta[1])))
 
     def turnXRappel(self, context: bpy.types.Context, delta: Vector):
-        panDelta = delta * self.mouseSanityMultiplierPan * self.prefs.sensitivityPan * (0.85 if self.isWasding else 1) * self.getPanFactor(context)
+        panDelta = delta * mouseSanityMultiplierPan * self.prefs.sensitivityPan * (0.85 if self.isWasding else 1) * self.getPanFactor(context)
         strafeDelta = Vector((delta[0], delta[1])) * self.getMovementFactor(True, True)
         self.move3dView(Vector((0, 0, 0)), Vector((0, 0, -strafeDelta[1] if self.prefs.invertStrafeY else strafeDelta[1])))
         self.pan3dView(Vector((panDelta[0] * 0.8, 0)))
@@ -262,7 +261,7 @@ class MouseStrafingOperator(bpy.types.Operator):
                     magnitude = 1 if event.type == "WHEELUPMOUSE" else -1
                     magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
                     prefs = bpy.context.preferences.addons[MouseStrafingPreferences.bl_idname].preferences
-                    prefs.sensitivityStrafe = nudgeValue(prefs.sensitivityStrafe, magnitude, self.increasedPrecision, self.strafeSensitivityRanges)
+                    prefs.sensitivityStrafe = nudgeValue(prefs.sensitivityStrafe, magnitude, self.increasedPrecision, strafeSensitivityRanges)
                     bpy.context.preferences.use_preferences_save = True
                     self.editStrafeSensitivityTimeNs = time.perf_counter_ns()
             elif event.type == self.prefs.keyCycleGears:
@@ -461,10 +460,10 @@ class MouseStrafingOperator(bpy.types.Operator):
         magnitude = -magnitude if method == "changeFOV" else magnitude
         magnitude = magnitude * 5 if self.increasedMagnitude else magnitude
         if method == "changeHFOV":
-            return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorWidth), magnitude, self.increasedPrecision, self.fovRanges), sensorWidth)
+            return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorWidth), magnitude, self.increasedPrecision, fovRanges), sensorWidth)
         elif method == "changeVFOV":
-            return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorHeight), magnitude, self.increasedPrecision, self.fovRanges), sensorHeight)
-        return nudgeValue(lens, magnitude, self.increasedPrecision, self.focalLengthRanges)
+            return fovToFocalLength(nudgeValue(focalLengthToFov(lens, sensorHeight), magnitude, self.increasedPrecision, fovRanges), sensorHeight)
+        return nudgeValue(lens, magnitude, self.increasedPrecision, focalLengthRanges)
 
     def processSaveState(self, saveStateSlot, context: bpy.types.Context):
         self.initSaveStates(context)
@@ -536,7 +535,7 @@ class MouseStrafingOperator(bpy.types.Operator):
         gear = self.prefs.strafeGearSelected if useGear else 1
         unitSystemConversion = self.prefs.speedMultiplierForUnitSystemNone if self.isUnitSystemNone else 1.0
         if isForMouseMovement:
-            return self.mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * mod * gear * unitSystemConversion
+            return mouseSanityMultiplierStrafe * self.prefs.sensitivityStrafe * mod * gear * unitSystemConversion
         return mod * gear * unitSystemConversion
 
     def getMovementFactorModifier(self):
