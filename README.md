@@ -23,10 +23,10 @@ This section assumes you set the addon up as described above and have default ke
 ⚠️ **Any key bindings mentioned only function while being in mouse strafing navigation.** ⚠️
 
 ## Mouse Strafing Navigation
-In the 3D View, press and hold `spacebar` to enter mouse strafing navigation. A crosshair will appear in the center of the screen. Click and hold the `left, right or middle mouse button` (`LMB`, `RMB`, `MMB`) to enable pannig and various mouse strafing behaviors. Additionally, you can hold the `both the left and right mouse button` (`BMB`) together for a 4th movement option. Then, move the mouse to strafe or turn. Release `spacebar` to end navigation. Which buttons do what can be configured in the addon preferences.
+In the 3D View, press and hold `spacebar` to enter mouse strafing navigation. A crosshair will appear in the center of the screen. Click and hold the `left, right or middle mouse button` (`LMB`, `RMB`, `MMB`) to enable pannig and various mouse strafing behaviors. Additionally, you can hold `both the left and right mouse button` (`BMB`) together for a 4th movement option. Then, move the mouse to strafe or turn. Release `spacebar` to end navigation. Which buttons do what can be configured in the addon preferences.
 
 ## Relocate Pivot
-You can press `Shift + C` to toggle automatic pivot relocation on/off (defaults to being on). When turning it on, the crosshair will signal this by briefly turning yellow (red when turning off) for the duration of you holding the key. When enabled, it relocates the view pivot automatically every time you exit mouse strafing navigation.
+You can press `Shift + C` to toggle automatic pivot relocation on/off; defaults to being on. When turning it on, the crosshair will signal this by turning yellow (red when turning off) for the duration of you holding the key. When enabled, it relocates the view pivot automatically every time you exit mouse strafing navigation.
 Pressing only `C` disables automatic pivot relocation if it is enabled to give you manual control. The 3D View's pivot point will be relocated to the surface which you are looking at with the crosshair as you press the key. The crosshair will turn green on success; red on failure.  
 When backface culling is enabled, backfaces will be ignored; this behavior can be changed in the addon preferences.  
 
